@@ -7,10 +7,13 @@ import toast from 'react-hot-toast'
 export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
+    
     console.log('提交登录表单:', { username, password })
 
     try {
@@ -20,20 +23,31 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
+        credentials: 'include', // 重要：包含 cookies
+      })
+
+      console.log('收到响应:', { 
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
       })
 
       const data = await response.json()
-      console.log('登录响应:', data)
+      console.log('响应数据:', data)
 
       if (data.success) {
         toast.success('登录成功')
-        window.location.href = '/admin'
+        // 使用 router.push 而不是 window.location
+        router.push('/admin')
       } else {
         toast.error(data.message || '登录失败')
+        console.error('登录失败:', data)
       }
     } catch (error) {
       console.error('登录错误:', error)
-      toast.error('登录失败')
+      toast.error('登录失败：' + (error instanceof Error ? error.message : '未知错误'))
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -60,6 +74,7 @@ export default function LoginPage() {
                 placeholder="用户名"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -75,6 +90,7 @@ export default function LoginPage() {
                 placeholder="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -82,9 +98,10 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              disabled={isLoading}
             >
-              登录
+              {isLoading ? '登录中...' : '登录'}
             </button>
           </div>
         </form>
