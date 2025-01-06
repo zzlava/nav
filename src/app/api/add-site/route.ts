@@ -52,16 +52,25 @@ async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | 
     try {
       browser = await chromium.launch({
         timeout: 30000,
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--disable-extensions'
+        ]
       })
       
       const context = await browser.newContext({
         viewport: { width: 1280, height: 800 },
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        // 添加更多浏览器选项
         deviceScaleFactor: 1,
         isMobile: false,
         hasTouch: false,
         javaScriptEnabled: true,
+        ignoreHTTPSErrors: true
       })
 
       const page = await context.newPage()
