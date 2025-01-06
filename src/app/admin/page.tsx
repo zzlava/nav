@@ -1,31 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 export default function AdminPage() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const isLoggedIn = localStorage.getItem('isLoggedIn')
-      console.log('检查登录状态:', isLoggedIn)
-      
-      if (!isLoggedIn) {
-        console.log('未登录，跳转到登录页面')
-        window.location.href = '/admin/login'
-      } else {
-        setIsLoading(false)
-      }
-    }
-
-    checkAuth()
-  }, [])
-
-  if (isLoading) {
-    return <div>加载中...</div>
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -26,10 +26,7 @@ export default function LoginPage() {
       console.log('登录响应:', data)
 
       if (data.success) {
-        // 存储登录状态
-        localStorage.setItem('isLoggedIn', 'true')
         toast.success('登录成功')
-        // 使用 window.location 进行强制跳转
         window.location.href = '/admin'
       } else {
         toast.error(data.message || '登录失败')
