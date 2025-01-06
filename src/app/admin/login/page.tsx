@@ -11,6 +11,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('提交登录表单:', { username, password })
 
     try {
       const response = await fetch('/api/auth', {
@@ -22,16 +23,19 @@ export default function LoginPage() {
       })
 
       const data = await response.json()
+      console.log('登录响应:', data)
 
       if (data.success) {
         // 存储登录状态
         localStorage.setItem('isLoggedIn', 'true')
         toast.success('登录成功')
-        router.push('/admin')
+        // 使用 window.location 进行强制跳转
+        window.location.href = '/admin'
       } else {
         toast.error(data.message || '登录失败')
       }
     } catch (error) {
+      console.error('登录错误:', error)
       toast.error('登录失败')
     }
   }
