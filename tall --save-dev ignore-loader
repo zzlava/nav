@@ -1,0 +1,5 @@
+[33mcommit 84d16b744c587381e4706e5af452437c94c7d9fa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: zzlava <zzlava@gmail.com>
+Date:   Mon Jan 6 09:27:58 2025 +0800
+
+    fix: migrate from playwright to puppeteer for vercel deployment
