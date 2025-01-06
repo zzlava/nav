@@ -21,9 +21,10 @@ export default function LoginPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({ username, password }),
-        credentials: 'include', // 重要：包含 cookies
+        credentials: 'same-origin', // 修改为 same-origin
       })
 
       console.log('收到响应:', { 
@@ -37,8 +38,8 @@ export default function LoginPage() {
 
       if (data.success) {
         toast.success('登录成功')
-        // 使用 router.push 而不是 window.location
-        router.push('/admin')
+        // 使用 window.location 进行强制跳转
+        window.location.href = '/admin'
       } else {
         toast.error(data.message || '登录失败')
         console.error('登录失败:', data)

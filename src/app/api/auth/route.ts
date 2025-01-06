@@ -4,6 +4,18 @@ import { cookies } from 'next/headers'
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin'
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  })
+}
+
 export async function POST(request: Request) {
   console.log('收到登录请求')
   
@@ -29,8 +41,7 @@ export async function POST(request: Request) {
       })
 
       // 设置 cookie
-      const cookieStore = cookies()
-      cookieStore.set('isLoggedIn', 'true', {
+      response.cookies.set('isLoggedIn', 'true', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -38,12 +49,16 @@ export async function POST(request: Request) {
         maxAge: 60 * 60 * 24 // 24 hours
       })
 
+      // 添加 CORS 头
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      response.headers.set('Access-Control-Allow-Credentials', 'true')
+
       console.log('Cookie 已设置')
       return response
     }
 
     console.log('验证失败：凭据不匹配')
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { 
         success: false, 
         message: '用户名或密码错误',
@@ -55,9 +70,15 @@ export async function POST(request: Request) {
       },
       { status: 401 }
     )
+
+    // 添加 CORS 头
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Credentials', 'true')
+
+    return errorResponse
   } catch (error: any) {
     console.error('认证过程出错:', error)
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { 
         success: false, 
         message: '认证失败',
@@ -67,5 +88,11 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     )
+
+    // 添加 CORS 头
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Credentials', 'true')
+
+    return errorResponse
   }
 } 
