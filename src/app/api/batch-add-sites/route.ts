@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { chromium } from 'playwright'
+import { chromium, Route } from 'playwright'
 import { client } from '@/lib/sanity'
 import { analyzeUrl } from '@/lib/gemini'
 import sharp from 'sharp'
@@ -81,7 +81,7 @@ async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | 
       page.setDefaultNavigationTimeout(30000)
       page.setDefaultTimeout(30000)
 
-      await page.route('**/*', route => {
+      await page.route('**/*', (route: Route) => {
         const resourceType = route.request().resourceType()
         if (['media', 'font', 'websocket', 'manifest'].includes(resourceType)) {
           route.abort()
