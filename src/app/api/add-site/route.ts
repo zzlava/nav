@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import chromium from 'chrome-aws-lambda'
-import puppeteer from 'puppeteer-core'
+import puppeteer, { HTTPRequest } from 'puppeteer-core'
 import { client } from '@/lib/sanity'
 import { analyzeUrl } from '@/lib/gemini'
 import sharp from 'sharp'
@@ -80,7 +80,7 @@ async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | 
 
       // 设置请求拦截
       await page.setRequestInterception(true);
-      page.on('request', (request) => {
+      page.on('request', (request: HTTPRequest) => {
         const resourceType = request.resourceType();
         if (['media', 'font', 'websocket', 'manifest'].includes(resourceType)) {
           request.abort();
