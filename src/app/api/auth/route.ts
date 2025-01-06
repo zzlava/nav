@@ -55,13 +55,15 @@ export async function POST(request: Request) {
       },
       { status: 401 }
     )
-  } catch (error) {
+  } catch (error: any) {
     console.error('认证过程出错:', error)
     return NextResponse.json(
       { 
         success: false, 
         message: '认证失败',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' ? 
+          error?.message || '未知错误' : 
+          undefined
       },
       { status: 500 }
     )
