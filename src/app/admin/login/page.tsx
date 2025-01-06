@@ -17,14 +17,12 @@ export default function LoginPage() {
     console.log('提交登录表单:', { username, password })
 
     try {
-      const response = await fetch('/api/auth', {
+      const response = await fetch('/admin/api/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify({ username, password }),
-        credentials: 'include',
       })
 
       console.log('收到响应:', { 
@@ -38,7 +36,7 @@ export default function LoginPage() {
 
       if (data.success) {
         toast.success('登录成功')
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 500))
         window.location.href = '/admin'
       } else {
         toast.error(data.message || '登录失败')
