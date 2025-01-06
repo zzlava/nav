@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { fetchSites } from '@/lib/sanity'
-import { Card } from '@/components/Card'
-import { ThemeToggle } from '@/components/theme-toggle'
+import Card from '@/components/Card'
+import ThemeToggle from '@/components/theme-toggle'
 
 // 定义分类
 const categories = [
