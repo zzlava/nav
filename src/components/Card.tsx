@@ -1,15 +1,17 @@
 import Image from 'next/image'
 import { urlFor } from '@/lib/sanity'
 
-interface CardProps {
+export interface CardProps {
+  _id: string
   title: string
   description: string
   url: string
   screenshot: any
-  category: string[]
+  category: string
+  onDelete?: (id: string) => void
 }
 
-export default function Card({ title, description, url, screenshot, category }: CardProps) {
+export default function Card({ _id, title, description, url, screenshot, category, onDelete }: CardProps) {
   return (
     <div className="group relative overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 transition-all duration-300 hover:shadow-xl">
       <a href={url} target="_blank" rel="noopener noreferrer" className="block">
@@ -30,17 +32,28 @@ export default function Card({ title, description, url, screenshot, category }: 
             {description}
           </p>
           <div className="flex flex-wrap gap-2">
-            {category.map((tag) => (
-              <span
-                key={tag}
-                className="px-2 py-1 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-              >
-                {tag}
-              </span>
-            ))}
+            <span
+              className="px-2 py-1 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              {category}
+            </span>
           </div>
         </div>
       </a>
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onDelete(_id)
+          }}
+          className="absolute top-2 right-2 p-1 bg-white/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }

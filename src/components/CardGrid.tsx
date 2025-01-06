@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Card } from './Card'
+import Card from './Card'
 import { toast } from 'react-hot-toast'
 
 interface Site {
