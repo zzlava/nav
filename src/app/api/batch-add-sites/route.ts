@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { chromium, Route } from 'playwright'
+import chromium from 'chrome-aws-lambda'
+import puppeteer from 'puppeteer-core'
 import { client } from '@/lib/sanity'
 import { analyzeUrl } from '@/lib/gemini'
 import sharp from 'sharp'
@@ -8,17 +9,12 @@ let _browser: any = null;
 
 async function getBrowser() {
   if (!_browser) {
-    _browser = await chromium.launch({
-      timeout: 30000,
+    _browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--disable-extensions'
-      ]
+      ignoreHTTPSErrors: true,
     });
   }
   return _browser;
@@ -66,90 +62,85 @@ async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | 
     try {
       browser = await getBrowser();
       
-      const context = await browser.newContext({
-        viewport: { width: 1280, height: 800 },
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      const page = await browser.newPage();
+      
+      await page.setViewport({
+        width: 1280,
+        height: 800,
         deviceScaleFactor: 1,
-        isMobile: false,
-        hasTouch: false,
-        javaScriptEnabled: true,
-        ignoreHTTPSErrors: true
       });
 
-      const page = await context.newPage()
-      
-      page.setDefaultNavigationTimeout(30000)
-      page.setDefaultTimeout(30000)
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-      await page.route('**/*', (route: Route) => {
-        const resourceType = route.request().resourceType()
+      // 设置请求拦截
+      await page.setRequestInterception(true);
+      page.on('request', (request) => {
+        const resourceType = request.resourceType();
         if (['media', 'font', 'websocket', 'manifest'].includes(resourceType)) {
-          route.abort()
-        } else if (resourceType === 'image' && !route.request().url().includes('favicon')) {
-          route.abort()
+          request.abort();
+        } else if (resourceType === 'image' && !request.url().includes('favicon')) {
+          request.abort();
         } else {
-          route.continue()
+          request.continue();
         }
-      })
+      });
+
+      // 设置超时
+      await page.setDefaultNavigationTimeout(30000);
+      await page.setDefaultTimeout(30000);
 
       const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
         timeout: 30000
-      })
+      });
 
       if (!response) {
-        throw new Error('页面加载失败: 无响应')
+        throw new Error('页面加载失败: 无响应');
       }
 
-      await page.waitForTimeout(1000)
+      // 等待内容加载
+      await page.waitForTimeout(1000);
 
+      // 注入样式
       await page.addStyleTag({
         content: `
           * { transition: none !important; animation: none !important; }
           .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { display: none !important; }
         `
-      })
+      });
 
-      await page.evaluate(() => window.scrollTo(0, 0))
+      // 滚动到顶部
+      await page.evaluate(() => window.scrollTo(0, 0));
 
       const screenshot = await page.screenshot({
         type: 'jpeg',
         quality: 90,
         fullPage: false,
-        timeout: 10000,
         clip: {
           x: 0,
           y: 0,
           width: 1280,
           height: 800
         }
-      })
+      });
 
-      const processedScreenshot = await processImage(screenshot)
-      return processedScreenshot
+      const processedScreenshot = await processImage(screenshot);
+      return processedScreenshot;
 
     } catch (error) {
-      console.error(`截图失败 (尝试 ${attempt + 1}/${retryCount}):`, error)
-      attempt++
+      console.error(`截图失败 (尝试 ${attempt + 1}/${retryCount}):`, error);
+      attempt++;
       
       if (attempt === retryCount) {
-        console.error('所有截图尝试都失败了:', error)
-        return null
+        console.error('所有截图尝试都失败了:', error);
+        return null;
       }
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    } finally {
-      if (browser) {
-        try {
-          await browser.close()
-        } catch (error) {
-          console.error('关闭浏览器失败:', error)
-        }
-      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
-  return null
+  return null;
 }
 
 async function uploadImage(imageData: Buffer | string): Promise<any> {
