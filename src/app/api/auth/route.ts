@@ -41,7 +41,9 @@ export async function POST(request: Request) {
       })
 
       // 设置 cookie
-      response.cookies.set('isLoggedIn', 'true', {
+      response.cookies.set({
+        name: 'isLoggedIn',
+        value: 'true',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -50,7 +52,8 @@ export async function POST(request: Request) {
       })
 
       // 添加 CORS 头
-      response.headers.set('Access-Control-Allow-Origin', '*')
+      const origin = request.headers.get('origin') || '*'
+      response.headers.set('Access-Control-Allow-Origin', origin)
       response.headers.set('Access-Control-Allow-Credentials', 'true')
 
       console.log('Cookie 已设置')
@@ -72,7 +75,8 @@ export async function POST(request: Request) {
     )
 
     // 添加 CORS 头
-    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    const origin = request.headers.get('origin') || '*'
+    errorResponse.headers.set('Access-Control-Allow-Origin', origin)
     errorResponse.headers.set('Access-Control-Allow-Credentials', 'true')
 
     return errorResponse
@@ -90,7 +94,8 @@ export async function POST(request: Request) {
     )
 
     // 添加 CORS 头
-    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    const origin = request.headers.get('origin') || '*'
+    errorResponse.headers.set('Access-Control-Allow-Origin', origin)
     errorResponse.headers.set('Access-Control-Allow-Credentials', 'true')
 
     return errorResponse

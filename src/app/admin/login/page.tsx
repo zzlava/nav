@@ -24,7 +24,7 @@ export default function LoginPage() {
           'Accept': 'application/json',
         },
         body: JSON.stringify({ username, password }),
-        credentials: 'same-origin', // 修改为 same-origin
+        credentials: 'include',
       })
 
       console.log('收到响应:', { 
@@ -38,7 +38,7 @@ export default function LoginPage() {
 
       if (data.success) {
         toast.success('登录成功')
-        // 使用 window.location 进行强制跳转
+        await new Promise(resolve => setTimeout(resolve, 100))
         window.location.href = '/admin'
       } else {
         toast.error(data.message || '登录失败')
