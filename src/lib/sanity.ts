@@ -25,3 +25,29 @@ export async function fetchSites() {
     return []
   }
 }
+
+export async function deleteAllSites() {
+  try {
+    // 先获取所有网站文档
+    const sites = await client.fetch(`*[_type == "site"]`)
+    
+    // 删除每个网站的截图资源
+    for (const site of sites) {
+      if (site.screenshot?.asset?._ref) {
+        await client.delete(site.screenshot.asset._ref)
+      }
+    }
+
+    // 删除所有网站文档
+    const transaction = client.transaction()
+    sites.forEach((site: any) => {
+      transaction.delete(site._id)
+    })
+    await transaction.commit()
+
+    return sites.length
+  } catch (error) {
+    console.error('删除所有网站失败:', error)
+    throw error
+  }
+}
