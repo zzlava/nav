@@ -1,12 +1,13 @@
 import Image from 'next/image'
 import { urlFor } from '@/lib/sanity'
+import { MouseEvent } from 'react'
 
 export interface CardProps {
   _id: string
   title: string
   description: string
   url: string
-  screenshot: any
+  screenshot?: any
   category: string
   onDelete?: (id: string) => void
 }
@@ -16,13 +17,15 @@ export default function Card({ _id, title, description, url, screenshot, categor
     <div className="group relative overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 transition-all duration-300 hover:shadow-xl">
       <a href={url} target="_blank" rel="noopener noreferrer" className="block">
         <div className="aspect-video relative overflow-hidden">
-          <Image
-            src={urlFor(screenshot).url()}
-            alt={title}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+          {screenshot && (
+            <Image
+              src={urlFor(screenshot).url()}
+              alt={title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          )}
         </div>
         <div className="p-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 line-clamp-1">
@@ -42,7 +45,7 @@ export default function Card({ _id, title, description, url, screenshot, categor
       </a>
       {onDelete && (
         <button
-          onClick={(e) => {
+          onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.preventDefault()
             e.stopPropagation()
             onDelete(_id)
