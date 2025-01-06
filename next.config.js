@@ -20,8 +20,17 @@ const nextConfig = {
       config.externals.push('chrome-aws-lambda');
     }
 
+    // 确保正确解析模块
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname, './src')
+    };
+
     return config;
   },
+  experimental: {
+    esmExternals: 'loose'
+  }
 }
 
 module.exports = nextConfig 
