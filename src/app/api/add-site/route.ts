@@ -4,6 +4,26 @@ import { client } from '@/lib/sanity'
 import { analyzeUrl } from '@/lib/gemini'
 import sharp from 'sharp'
 
+let _browser: any = null;
+
+async function getBrowser() {
+  if (!_browser) {
+    _browser = await chromium.launch({
+      timeout: 30000,
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--disable-extensions'
+      ]
+    });
+  }
+  return _browser;
+}
+
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -45,23 +65,12 @@ async function processImage(imageBuffer: Buffer): Promise<Buffer> {
 }
 
 async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | null> {
-  let browser = null
-  let attempt = 0
+  let browser = null;
+  let attempt = 0;
 
   while (attempt < retryCount) {
     try {
-      browser = await chromium.launch({
-        timeout: 30000,
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--disable-extensions'
-        ]
-      })
+      browser = await getBrowser();
       
       const context = await browser.newContext({
         viewport: { width: 1280, height: 800 },
@@ -71,7 +80,7 @@ async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | 
         hasTouch: false,
         javaScriptEnabled: true,
         ignoreHTTPSErrors: true
-      })
+      });
 
       const page = await context.newPage()
       
