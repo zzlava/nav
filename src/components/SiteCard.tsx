@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { urlForImage } from '@/lib/sanity'
+import { urlFor } from '@/lib/sanity'
 
 export default function SiteCard({ site, onDelete }: { site: any; onDelete?: (id: string) => void }) {
   const [isExpanded, setIsExpanded] = useState(false)
   
-  const imageUrl = site.screenshot?.asset?._ref 
-    ? urlForImage(site.screenshot).width(600).url()
+  const imageUrl = site.screenshot
+    ? urlFor(site.screenshot).width(600).url()
     : ''
 
   // 描述文本的最大长度
