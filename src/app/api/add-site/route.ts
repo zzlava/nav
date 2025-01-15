@@ -7,96 +7,125 @@ import { analyzeUrl } from '@/lib/gemini'
 
 async function captureScreenshot(url: string): Promise<Buffer | null> {
   let browser = null
-  try {
-    console.log('开始截图:', url)
-    
-    // 获取 Chrome 可执行文件路径
-    const executablePath = await chrome.executablePath
+  let retryCount = 3
+  let attempt = 0
 
-    if (!executablePath) {
-      console.error('无法获取 Chrome 可执行文件路径')
-      return null
-    }
+  while (attempt < retryCount) {
+    try {
+      console.log(`开始截图 (尝试 ${attempt + 1}/${retryCount}):`, url)
+      
+      // 获取 Chrome 可执行文件路径
+      const executablePath = await chrome.executablePath
 
-    // 启动浏览器
-    browser = await puppeteer.launch({
-      args: [...chrome.args, '--hide-scrollbars', '--disable-web-security'],
-      defaultViewport: chrome.defaultViewport,
-      executablePath,
-      headless: true,
-      ignoreHTTPSErrors: true,
-    })
-
-    // 创建新页面
-    const page = await browser.newPage()
-    
-    // 设置视口大小
-    await page.setViewport({ width: 1280, height: 800 })
-    
-    // 设置请求拦截
-    await page.setRequestInterception(true)
-    page.on('request', (request) => {
-      const resourceType = request.resourceType()
-      if (resourceType === 'image' || resourceType === 'media' || resourceType === 'font') {
-        request.abort()
-      } else {
-        request.continue()
+      if (!executablePath) {
+        console.error('无法获取 Chrome 可执行文件路径')
+        return null
       }
-    })
 
-    // 导航到目标网址
-    await page.goto(url, { 
-      waitUntil: ['domcontentloaded', 'networkidle0'],
-      timeout: 15000 
-    })
+      // 启动浏览器
+      browser = await puppeteer.launch({
+        args: [...chrome.args, '--hide-scrollbars', '--disable-web-security'],
+        defaultViewport: chrome.defaultViewport,
+        executablePath,
+        headless: true,
+        ignoreHTTPSErrors: true,
+      })
 
-    // 等待页面加载
-    await page.waitForTimeout(2000)
-
-    // 注入样式以改善截图效果
-    await page.addStyleTag({
-      content: `
-        * { 
-          transition: none !important; 
-          animation: none !important;
-          scroll-behavior: auto !important;
+      // 创建新页面
+      const page = await browser.newPage()
+      
+      // 设置视口大小
+      await page.setViewport({ 
+        width: 1280, 
+        height: 800,
+        deviceScaleFactor: 1,
+      })
+      
+      // 设置请求拦截
+      await page.setRequestInterception(true)
+      page.on('request', (request) => {
+        const resourceType = request.resourceType()
+        if (['media', 'font', 'websocket', 'manifest'].includes(resourceType)) {
+          request.abort()
+        } else if (resourceType === 'image' && !request.url().includes('favicon')) {
+          request.abort()
+        } else {
+          request.continue()
         }
-        .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { 
-          display: none !important; 
-        }
-      `
-    })
+      })
 
-    // 滚动到顶部
-    await page.evaluate(() => window.scrollTo(0, 0))
+      // 设置超时
+      await page.setDefaultNavigationTimeout(30000)
+      await page.setDefaultTimeout(30000)
 
-    // 截图
-    const screenshot = await page.screenshot({
-      type: 'jpeg',
-      quality: 80,
-      fullPage: false,
-      clip: {
-        x: 0,
-        y: 0,
-        width: 1280,
-        height: 800
+      // 导航到目标网址
+      const response = await page.goto(url, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000
+      })
+
+      if (!response) {
+        throw new Error('页面加载失败: 无响应')
       }
-    })
 
-    console.log('截图完成:', url)
-    return screenshot as Buffer
-  } catch (error) {
-    console.error('截图失败:', error)
-    return null
-  } finally {
-    if (browser) {
-      try {
-        await browser.close()
-      } catch (error) {
-        console.error('关闭浏览器失败:', error)
+      // 等待页面加载
+      await page.waitForTimeout(2000)
+
+      // 注入样式以改善截图效果
+      await page.addStyleTag({
+        content: `
+          * { 
+            transition: none !important; 
+            animation: none !important;
+            scroll-behavior: auto !important;
+          }
+          .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { 
+            display: none !important; 
+          }
+        `
+      })
+
+      // 滚动到顶部
+      await page.evaluate(() => window.scrollTo(0, 0))
+
+      // 截图
+      const screenshot = await page.screenshot({
+        type: 'jpeg',
+        quality: 85,
+        fullPage: false,
+        clip: {
+          x: 0,
+          y: 0,
+          width: 1280,
+          height: 800
+        }
+      })
+
+      console.log('截图完成:', url)
+      return screenshot as Buffer
+    } catch (error) {
+      console.error(`截图失败 (尝试 ${attempt + 1}/${retryCount}):`, error)
+      attempt++
+      
+      if (attempt === retryCount) {
+        console.error('所有截图尝试都失败了:', error)
+        return null
+      }
+      
+      // 等待一秒后重试
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    } finally {
+      if (browser) {
+        try {
+          await browser.close()
+        } catch (error) {
+          console.error('关闭浏览器失败:', error)
+        }
       }
     }
   }
+
+  return null
 }
 
 async function uploadScreenshot(screenshot: Buffer) {
@@ -238,7 +267,7 @@ export async function POST(request: Request) {
             url,
             title: analysis.title,
             description: analysis.description,
-            category: analysis.category[0],
+            category: analysis.category,
             screenshot: screenshotAsset,
             createdAt: new Date().toISOString(),
             status: screenshotAsset ? 'active' : 'pending'
