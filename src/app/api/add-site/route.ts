@@ -24,8 +24,21 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
 
       // 启动浏览器
       browser = await puppeteer.launch({
-        args: [...chrome.args, '--hide-scrollbars', '--disable-web-security'],
-        defaultViewport: chrome.defaultViewport,
+        args: [
+          ...chrome.args,
+          '--hide-scrollbars',
+          '--disable-web-security',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu'
+        ],
+        defaultViewport: {
+          width: 1280,
+          height: 800,
+          deviceScaleFactor: 1,
+        },
         executablePath,
         headless: true,
         ignoreHTTPSErrors: true,
@@ -34,20 +47,18 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       // 创建新页面
       const page = await browser.newPage()
       
-      // 设置视口大小
-      await page.setViewport({ 
-        width: 1280, 
-        height: 800,
-        deviceScaleFactor: 1,
-      })
-      
+      // 设置用户代理
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+
       // 设置请求拦截
       await page.setRequestInterception(true)
       page.on('request', (request) => {
         const resourceType = request.resourceType()
-        if (['media', 'font', 'websocket', 'manifest'].includes(resourceType)) {
+        if (['media', 'font', 'websocket', 'manifest', 'other'].includes(resourceType)) {
           request.abort()
         } else if (resourceType === 'image' && !request.url().includes('favicon')) {
+          request.abort()
+        } else if (resourceType === 'stylesheet') {
           request.abort()
         } else {
           request.continue()
@@ -55,13 +66,13 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       })
 
       // 设置超时
-      await page.setDefaultNavigationTimeout(30000)
-      await page.setDefaultTimeout(30000)
+      await page.setDefaultNavigationTimeout(15000)
+      await page.setDefaultTimeout(15000)
 
       // 导航到目标网址
       const response = await page.goto(url, { 
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: 15000
       })
 
       if (!response) {
@@ -69,7 +80,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       }
 
       // 等待页面加载
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(1000)
 
       // 注入样式以改善截图效果
       await page.addStyleTag({
@@ -82,6 +93,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
           .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { 
             display: none !important; 
           }
+          body { overflow: hidden !important; }
         `
       })
 
@@ -91,7 +103,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       // 截图
       const screenshot = await page.screenshot({
         type: 'jpeg',
-        quality: 85,
+        quality: 80,
         fullPage: false,
         clip: {
           x: 0,

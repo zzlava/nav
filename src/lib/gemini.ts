@@ -31,7 +31,8 @@ export async function analyzeUrl(url: string) {
     2. 如果无法访问网站，返回基于 URL 的猜测
     3. 标题和描述必须使用中文
     4. 标题不要超过20个字
-    5. 分类必须是以下之一：社交、技术、新闻、工具、其他`
+    5. category 字段必须严格匹配以下值之一：社交、技术、新闻、工具、其他
+    6. 不要添加任何额外的字段或注释，只返回 JSON`
 
     console.log('发送到 AI 的提示:', prompt)
     const result = await model.generateContent(prompt)
@@ -55,8 +56,17 @@ export async function analyzeUrl(url: string) {
         throw new Error('返回的数据格式不完整')
       }
 
+      // 验证分类是否为允许的值
+      if (!Object.keys(categoryMap).includes(parsed.category)) {
+        console.error('无效的分类值:', parsed.category)
+        throw new Error('无效的分类值')
+      }
+
       // 将中文分类转换为英文
-      const englishCategory = categoryMap[parsed.category] || 'others'
+      const englishCategory = categoryMap[parsed.category]
+      if (!englishCategory) {
+        throw new Error('无法映射分类值')
+      }
 
       const result = {
         title: parsed.title.trim().slice(0, 20),
