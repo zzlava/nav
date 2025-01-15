@@ -171,11 +171,50 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('准备处理的URL列表:', urls)
+    // 验证和处理 URL
+    const validUrls = urls.filter(url => {
+      try {
+        if (typeof url !== 'string') {
+          console.log('URL 不是字符串:', url)
+          return false
+        }
+        const trimmedUrl = url.trim()
+        if (!trimmedUrl) {
+          console.log('URL 为空')
+          return false
+        }
+        // 确保 URL 以 http:// 或 https:// 开头
+        let processedUrl = trimmedUrl
+        if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+          processedUrl = 'https://' + processedUrl
+        }
+        new URL(processedUrl) // 验证 URL 格式
+        return true
+      } catch (error) {
+        console.log('无效的 URL:', url, error)
+        return false
+      }
+    }).map(url => {
+      let processedUrl = url.trim()
+      if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+        processedUrl = 'https://' + processedUrl
+      }
+      return processedUrl
+    })
+
+    if (validUrls.length === 0) {
+      console.log('没有有效的 URL')
+      return NextResponse.json(
+        { success: false, message: '没有有效的网址' },
+        { status: 400 }
+      )
+    }
+
+    console.log('处理后的有效 URL 列表:', validUrls)
 
     // 创建文档
     const results = await Promise.all(
-      urls.map(async (url) => {
+      validUrls.map(async (url) => {
         try {
           console.log(`开始处理网站: ${url}`)
 
