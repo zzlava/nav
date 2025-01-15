@@ -119,18 +119,30 @@ export async function POST(request: Request) {
   }
 
   try {
-    let body;
+    // 先读取请求体为文本
+    const text = await request.text()
+    console.log('原始请求体:', text)
+    
+    if (!text) {
+      return NextResponse.json(
+        { success: false, message: '请求体为空' },
+        { status: 400 }
+      )
+    }
+
+    // 尝试解析 JSON
+    let body
     try {
-      body = await request.json()
+      body = JSON.parse(text)
     } catch (error) {
       console.error('解析请求体失败:', error)
       return NextResponse.json(
-        { success: false, message: '无效的请求数据' },
+        { success: false, message: '无效的请求数据格式' },
         { status: 400 }
       )
     }
     
-    console.log('接收到的请求体:', body)
+    console.log('解析后的请求体:', body)
     
     const { urls } = body
     
