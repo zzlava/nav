@@ -19,15 +19,26 @@ export function CardGrid() {
 
   const loadSites = async () => {
     try {
-      const response = await fetch('/api/sites')
+      console.log('开始加载网站列表...')
+      const response = await fetch('/api/sites/list', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
+      
       if (!response.ok) {
-        throw new Error('加载失败')
+        const errorData = await response.json()
+        throw new Error(errorData.message || '加载失败')
       }
+      
       const data = await response.json()
+      console.log('获取到的网站列表:', data)
       setSites(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('加载网站列表失败:', error)
-      toast.error('加载失败')
+      toast.error(error.message || '加载失败')
     } finally {
       setLoading(false)
     }
@@ -60,14 +71,20 @@ export function CardGrid() {
   useEffect(() => {
     loadSites()
 
+    // 设置定期刷新
+    const interval = setInterval(loadSites, 5000) // 每5秒刷新一次
+
     // 监听自定义事件
     const handleSiteAdded = () => {
+      console.log('检测到新网站添加，刷新列表')
       loadSites()
     }
 
     window.addEventListener('site-added', handleSiteAdded)
+    
     return () => {
       window.removeEventListener('site-added', handleSiteAdded)
+      clearInterval(interval)
     }
   }, [])
 
