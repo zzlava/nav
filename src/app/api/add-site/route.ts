@@ -14,12 +14,23 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
     console.log('完整的 thum.io URL:', fullUrl)
     
     const response = await fetch(fullUrl)
+    console.log('thum.io 响应状态:', response.status, response.statusText)
+    console.log('thum.io 响应头:', Object.fromEntries(response.headers.entries()))
+    
     if (!response.ok) {
       throw new Error(`截图服务返回错误: ${response.status} ${response.statusText}`)
     }
     
-    const buffer = Buffer.from(await response.arrayBuffer())
-    console.log('成功获取截图，大小:', buffer.length, '字节')
+    const arrayBuffer = await response.arrayBuffer()
+    console.log('获取到的数据大小:', arrayBuffer.byteLength, '字节')
+    
+    const buffer = Buffer.from(arrayBuffer)
+    console.log('转换后的 Buffer 大小:', buffer.length, '字节')
+    
+    if (buffer.length === 0) {
+      throw new Error('截图数据为空')
+    }
+    
     return buffer
   } catch (error) {
     console.error('获取截图失败:', error)
@@ -29,12 +40,28 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
 
 async function uploadScreenshot(screenshot: Buffer) {
   try {
+    if (!screenshot || screenshot.length === 0) {
+      throw new Error('无效的截图数据')
+    }
+    
     console.log('开始上传截图，大小:', screenshot.length, '字节')
+    console.log('检查 Sanity 配置:', {
+      projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+      dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+      hasToken: !!process.env.SANITY_API_TOKEN
+    })
+    
     const asset = await client.assets.upload('image', screenshot, {
       contentType: 'image/jpeg',
       filename: `screenshot-${Date.now()}.jpg`
     })
-    console.log('截图上传成功:', asset._id)
+    
+    console.log('截图上传成功:', asset)
+    
+    if (!asset._id) {
+      throw new Error('上传成功但未返回资源 ID')
+    }
+    
     return {
       _type: 'image',
       asset: {
