@@ -36,34 +36,37 @@ export async function DELETE(
       try {
         console.log('处理截图引用:', doc.screenshot.asset._ref)
         
-        // 查找所有引用此图片的文档
-        const referringDocs = await client.fetch(
-          `*[references($imageId)]._id`,
-          { imageId: doc.screenshot.asset._ref }
-        )
-        console.log('引用此图片的文档:', referringDocs)
+        // 使用 mutations 来处理删除操作
+        const mutations = [
+          // 先将所有引用此图片的文档的 screenshot 字段设为 null
+          {
+            patch: {
+              query: '*[references($ref)]',
+              params: { ref: doc.screenshot.asset._ref },
+              set: { screenshot: null }
+            }
+          },
+          // 删除图片资源
+          {
+            delete: {
+              id: doc.screenshot.asset._ref
+            }
+          },
+          // 删除主文档
+          {
+            delete: {
+              id: params.id
+            }
+          }
+        ]
         
-        // 创建一个事务
-        const transaction = client.transaction()
-        
-        // 为每个引用文档创建更新操作
-        for (const docId of referringDocs) {
-          transaction.patch(docId, patch => patch.unset(['screenshot']))
-        }
-        
-        // 添加删除图片资源的操作
-        transaction.delete(doc.screenshot.asset._ref)
-        
-        // 添加删除主文档的操作
-        transaction.delete(params.id)
-        
-        // 提交事务
-        console.log('提交删除事务...')
-        await transaction.commit()
-        console.log('事务提交成功')
+        // 执行 mutations
+        console.log('执行删除操作...')
+        await client.mutate(mutations)
+        console.log('删除操作完成')
         
       } catch (error) {
-        console.error('处理删除事务失败:', error)
+        console.error('处理删除操作失败:', error)
         throw error
       }
     } else {
