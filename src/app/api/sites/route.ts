@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { client, createSite, testConnection, projectId, dataset, apiToken } from '@/lib/sanity'
+import { client, createSite, testConnection } from '@/lib/sanity'
 
 export async function POST(request: Request) {
   console.log('API 路由开始处理请求')
   console.log('Sanity 配置状态:', {
-    hasProjectId: !!projectId,
-    hasDataset: !!dataset,
-    hasToken: !!apiToken
+    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+    hasToken: !!process.env.SANITY_API_TOKEN
   })
 
   // 检查登录状态
@@ -19,6 +19,23 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, message: '未登录' },
       { status: 401 }
+    )
+  }
+
+  // 检查必要的配置
+  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || !process.env.SANITY_API_TOKEN) {
+    console.error('缺少必要的 Sanity 配置')
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: '系统配置错误',
+        debug: {
+          hasProjectId: !!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+          hasDataset: !!process.env.NEXT_PUBLIC_SANITY_DATASET,
+          hasToken: !!process.env.SANITY_API_TOKEN
+        }
+      },
+      { status: 500 }
     )
   }
 
@@ -34,9 +51,9 @@ export async function POST(request: Request) {
           success: false, 
           message: '无法连接到数据库',
           debug: {
-            hasProjectId: !!projectId,
-            hasDataset: !!dataset,
-            hasToken: !!apiToken
+            projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+            dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+            hasToken: !!process.env.SANITY_API_TOKEN
           }
         },
         { status: 500 }

@@ -2,33 +2,20 @@ import { createClient } from '@sanity/client'
 import imageUrlBuilder from '@sanity/image-url'
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types'
 
-export const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
-export const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
-export const apiToken = process.env.SANITY_API_TOKEN
+// 直接使用环境变量，不进行中间存储
+export const client = createClient({
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '',
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
+  apiVersion: '2024-01-06',
+  token: process.env.SANITY_API_TOKEN,
+  useCdn: false,
+})
 
 // 打印配置信息（不包含敏感信息）
 console.log('Sanity 配置信息:', {
-  projectId,
-  dataset,
-  hasToken: !!apiToken,
-})
-
-if (!projectId || !dataset || !apiToken) {
-  console.error('缺少必要的 Sanity 配置:', {
-    hasProjectId: !!projectId,
-    hasDataset: !!dataset,
-    hasToken: !!apiToken,
-  })
-}
-
-export const client = createClient({
-  projectId: projectId || '',
-  dataset,
-  apiVersion: '2024-01-06',
-  token: apiToken,
-  useCdn: false,
-  perspective: 'published',
-  stega: false,
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+  hasToken: !!process.env.SANITY_API_TOKEN,
 })
 
 const builder = imageUrlBuilder(client)
