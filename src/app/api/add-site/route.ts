@@ -14,35 +14,16 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
     try {
       console.log(`开始截图 (尝试 ${attempt + 1}/${retryCount}):`, url)
       
-      // 获取 Chrome 可执行文件路径
-      const executablePath = process.env.CHROME_EXECUTABLE_PATH || await chrome.executablePath
-
-      console.log('Chrome 可执行文件路径:', executablePath)
-
       // 启动浏览器
       browser = await puppeteer.launch({
-        args: [
-          ...chrome.args,
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--hide-scrollbars',
-          '--mute-audio'
-        ],
+        args: chrome.args,
         defaultViewport: {
           width: 1280,
           height: 800,
           deviceScaleFactor: 1,
-          isMobile: false,
-          hasTouch: false,
-          isLandscape: true
         },
-        executablePath,
-        headless: true,
+        executablePath: await chrome.executablePath,
+        headless: chrome.headless,
         ignoreHTTPSErrors: true
       })
 
@@ -56,26 +37,18 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       await page.setRequestInterception(true)
       page.on('request', (request) => {
         const resourceType = request.resourceType()
-        if (['media', 'font', 'websocket', 'manifest', 'other'].includes(resourceType)) {
-          request.abort()
-        } else if (resourceType === 'image' && !request.url().includes('favicon')) {
-          request.abort()
-        } else if (resourceType === 'stylesheet') {
+        if (['media', 'font', 'websocket', 'manifest', 'other', 'image', 'stylesheet'].includes(resourceType)) {
           request.abort()
         } else {
           request.continue()
         }
       })
 
-      // 设置超时
-      await page.setDefaultNavigationTimeout(30000)
-      await page.setDefaultTimeout(30000)
-
       // 导航到目标网址
       console.log('正在访问网址:', url)
       const response = await page.goto(url, { 
-        waitUntil: 'networkidle0',
-        timeout: 30000
+        waitUntil: 'domcontentloaded',
+        timeout: 15000
       })
 
       if (!response) {
@@ -83,34 +56,21 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       }
 
       // 等待页面加载
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(1000)
 
       // 注入样式以改善截图效果
       await page.addStyleTag({
-        content: `
-          * { 
-            transition: none !important; 
-            animation: none !important;
-            scroll-behavior: auto !important;
-          }
-          .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { 
-            display: none !important; 
-          }
-          body { overflow: hidden !important; }
-        `
+        content: `* { transition: none !important; animation: none !important; }`
       })
 
       // 滚动到顶部
       await page.evaluate(() => window.scrollTo(0, 0))
 
-      // 等待一下以确保页面渲染完成
-      await page.waitForTimeout(1000)
-
       console.log('准备截图...')
       // 截图
       const screenshot = await page.screenshot({
         type: 'jpeg',
-        quality: 85,
+        quality: 80,
         fullPage: false,
         clip: {
           x: 0,
