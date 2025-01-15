@@ -26,7 +26,13 @@ export default function Home() {
     try {
       setError(null)
       console.log('开始加载网站列表...')
-      const response = await fetch('/api/sites/list')
+      const response = await fetch('/api/sites/list', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       if (!response.ok) {
         throw new Error('加载失败')
       }
@@ -49,7 +55,7 @@ export default function Home() {
 
   // 定期刷新数据
   useEffect(() => {
-    const interval = setInterval(loadSites, 30000) // 每30秒刷新一次
+    const interval = setInterval(loadSites, 5000) // 每5秒刷新一次
     return () => clearInterval(interval)
   }, [])
 
@@ -71,6 +77,9 @@ export default function Home() {
 
       setSites(sites.filter(site => site._id !== id))
       toast.success('删除成功')
+      
+      // 删除成功后立即刷新数据
+      await loadSites()
     } catch (error) {
       console.error('删除失败:', error)
       toast.error('删除失败，请重试')

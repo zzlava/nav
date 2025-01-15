@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server'
 import { client } from '@/lib/sanity'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     console.log('开始获取网站列表...')
     const query = `*[_type == "site"] | order(createdAt desc)`
     console.log('执行查询:', query)
     
-    const sites = await client.fetch(query)
+    const sites = await client.fetch(query, undefined, {
+      cache: 'no-cache'
+    })
     console.log('获取到的网站列表:', sites)
     
     if (!Array.isArray(sites)) {
@@ -15,7 +20,12 @@ export async function GET() {
       return NextResponse.json([], { status: 500 })
     }
     
-    return NextResponse.json(sites)
+    const response = NextResponse.json(sites)
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
   } catch (error: any) {
     console.error('获取网站列表失败:', {
       message: error.message,
