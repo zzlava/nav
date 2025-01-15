@@ -31,31 +31,46 @@ export async function DELETE(
       )
     }
 
-    // 2. 如果文档有截图，先解除引用关系
+    // 2. 如果文档有截图，处理引用关系
     if (doc.screenshot?.asset?._ref) {
       try {
-        console.log('解除截图引用:', doc.screenshot.asset._ref)
-        // 先更新文档，移除截图引用
-        await client
-          .patch(params.id)
-          .unset(['screenshot'])
-          .commit()
+        console.log('处理截图引用:', doc.screenshot.asset._ref)
         
-        // 等待一秒，确保更新生效
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // 查找所有引用此图片的文档
+        const referringDocs = await client.fetch(
+          `*[references($imageId)]._id`,
+          { imageId: doc.screenshot.asset._ref }
+        )
+        console.log('引用此图片的文档:', referringDocs)
         
-        // 然后尝试删除图片资源
-        console.log('删除截图资源:', doc.screenshot.asset._ref)
-        await client.delete(doc.screenshot.asset._ref)
+        // 创建一个事务
+        const transaction = client.transaction()
+        
+        // 为每个引用文档创建更新操作
+        for (const docId of referringDocs) {
+          transaction.patch(docId, patch => patch.unset(['screenshot']))
+        }
+        
+        // 添加删除图片资源的操作
+        transaction.delete(doc.screenshot.asset._ref)
+        
+        // 添加删除主文档的操作
+        transaction.delete(params.id)
+        
+        // 提交事务
+        console.log('提交删除事务...')
+        await transaction.commit()
+        console.log('事务提交成功')
+        
       } catch (error) {
-        console.error('处理截图失败:', error)
-        // 继续执行，不中断流程
+        console.error('处理删除事务失败:', error)
+        throw error
       }
+    } else {
+      // 如果没有截图，直接删除文档
+      console.log('直接删除文档:', params.id)
+      await client.delete(params.id)
     }
-
-    // 3. 删除文档本身
-    console.log('删除文档:', params.id)
-    await client.delete(params.id)
 
     return NextResponse.json({
       success: true,
