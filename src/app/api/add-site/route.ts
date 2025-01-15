@@ -1,110 +1,30 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { client } from '@/lib/sanity'
-import puppeteer from 'puppeteer-core'
-import chrome from 'chrome-aws-lambda'
 import { analyzeUrl } from '@/lib/gemini'
 
 async function captureScreenshot(url: string): Promise<Buffer | null> {
-  let browser = null
-  let retryCount = 3
-  let attempt = 0
-
-  while (attempt < retryCount) {
-    try {
-      console.log(`开始截图 (尝试 ${attempt + 1}/${retryCount}):`, url)
-      
-      // 启动浏览器
-      browser = await puppeteer.launch({
-        args: chrome.args,
-        defaultViewport: {
-          width: 1280,
-          height: 800,
-          deviceScaleFactor: 1,
-        },
-        executablePath: await chrome.executablePath,
-        headless: chrome.headless,
-        ignoreHTTPSErrors: true
-      })
-
-      // 创建新页面
-      const page = await browser.newPage()
-      
-      // 设置用户代理
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-
-      // 设置请求拦截
-      await page.setRequestInterception(true)
-      page.on('request', (request) => {
-        const resourceType = request.resourceType()
-        if (['media', 'font', 'websocket', 'manifest', 'other', 'image', 'stylesheet'].includes(resourceType)) {
-          request.abort()
-        } else {
-          request.continue()
-        }
-      })
-
-      // 导航到目标网址
-      console.log('正在访问网址:', url)
-      const response = await page.goto(url, { 
-        waitUntil: 'domcontentloaded',
-        timeout: 15000
-      })
-
-      if (!response) {
-        throw new Error('页面加载失败: 无响应')
-      }
-
-      // 等待页面加载
-      await page.waitForTimeout(1000)
-
-      // 注入样式以改善截图效果
-      await page.addStyleTag({
-        content: `* { transition: none !important; animation: none !important; }`
-      })
-
-      // 滚动到顶部
-      await page.evaluate(() => window.scrollTo(0, 0))
-
-      console.log('准备截图...')
-      // 截图
-      const screenshot = await page.screenshot({
-        type: 'jpeg',
-        quality: 80,
-        fullPage: false,
-        clip: {
-          x: 0,
-          y: 0,
-          width: 1280,
-          height: 800
-        }
-      })
-
-      console.log('截图完成:', url)
-      return screenshot as Buffer
-    } catch (error) {
-      console.error(`截图失败 (尝试 ${attempt + 1}/${retryCount}):`, error)
-      attempt++
-      
-      if (attempt === retryCount) {
-        console.error('所有截图尝试都失败了:', error)
-        return null
-      }
-      
-      // 等待一秒后重试
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    } finally {
-      if (browser) {
-        try {
-          await browser.close()
-        } catch (error) {
-          console.error('关闭浏览器失败:', error)
-        }
-      }
+  try {
+    console.log('使用 thum.io 获取截图:', url)
+    const auth = '73212-088cfe418adf4a1658b4d4aa9d0d31fb'
+    const thumbUrl = `//image.thum.io/get/auth/${auth}/${url}`
+    
+    // 添加协议前缀
+    const fullUrl = `https:${thumbUrl}`
+    console.log('完整的 thum.io URL:', fullUrl)
+    
+    const response = await fetch(fullUrl)
+    if (!response.ok) {
+      throw new Error(`截图服务返回错误: ${response.status} ${response.statusText}`)
     }
+    
+    const buffer = Buffer.from(await response.arrayBuffer())
+    console.log('成功获取截图，大小:', buffer.length, '字节')
+    return buffer
+  } catch (error) {
+    console.error('获取截图失败:', error)
+    return null
   }
-
-  return null
 }
 
 async function uploadScreenshot(screenshot: Buffer) {
