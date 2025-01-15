@@ -1,234 +1,238 @@
 import { NextResponse } from 'next/server'
-import chromium from 'chrome-aws-lambda'
-import puppeteer, { HTTPRequest } from 'puppeteer-core'
+import { cookies } from 'next/headers'
 import { client } from '@/lib/sanity'
+import puppeteer from 'puppeteer-core'
+import chrome from 'chrome-aws-lambda'
 import { analyzeUrl } from '@/lib/gemini'
-import sharp from 'sharp'
 
-let _browser: any = null;
+async function captureScreenshot(url: string): Promise<Buffer | null> {
+  let browser = null
+  try {
+    console.log('开始截图:', url)
+    
+    // 获取 Chrome 可执行文件路径
+    const executablePath = await chrome.executablePath
 
-async function getBrowser() {
-  if (!_browser) {
-    _browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
+    if (!executablePath) {
+      console.error('无法获取 Chrome 可执行文件路径')
+      return null
+    }
+
+    // 启动浏览器
+    browser = await puppeteer.launch({
+      args: [...chrome.args, '--hide-scrollbars', '--disable-web-security'],
+      defaultViewport: chrome.defaultViewport,
+      executablePath,
       headless: true,
       ignoreHTTPSErrors: true,
-    });
-  }
-  return _browser;
-}
-
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-// 默认占位图片的 Base64 编码
-const FALLBACK_IMAGE = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4MCIgaGVpZ2h0PSI4MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPuaIkeeahOWbvueJh+S4jeWPr+eUqDwvdGV4dD48L3N2Zz4=`
-
-async function processImage(imageBuffer: Buffer): Promise<Buffer> {
-  try {
-    // 处理原始图片
-    return await sharp(imageBuffer)
-      // 调整大小和格式
-      .resize(1280, 800, {
-        fit: 'cover',
-        position: 'top'
-      })
-      // 轻微增强
-      .modulate({
-        brightness: 1.05,  // 轻微提高亮度
-        saturation: 1.1,   // 轻微提高饱和度
-        hue: 0            // 保持原始色调
-      })
-      // 增加对比度
-      .linear(
-        1.1,    // 对比度系数
-        -0.1    // 偏移量
-      )
-      // 输出为高质量 JPEG
-      .jpeg({
-        quality: 85,
-        progressive: true,
-        chromaSubsampling: '4:4:4'  // 保持最佳色彩质量
-      })
-      .toBuffer()
-  } catch (error) {
-    console.error('图片处理失败:', error)
-    // 如果处理失败，返回原始图片
-    return imageBuffer
-  }
-}
-
-async function captureScreenshot(url: string, retryCount = 3): Promise<Buffer | null> {
-  let browser = null;
-  let attempt = 0;
-
-  while (attempt < retryCount) {
-    try {
-      browser = await getBrowser();
-      
-      const page = await browser.newPage();
-      
-      await page.setViewport({
-        width: 1280,
-        height: 800,
-        deviceScaleFactor: 1,
-      });
-
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-      // 设置请求拦截
-      await page.setRequestInterception(true);
-      page.on('request', (request: HTTPRequest) => {
-        const resourceType = request.resourceType();
-        if (['media', 'font', 'websocket', 'manifest'].includes(resourceType)) {
-          request.abort();
-        } else if (resourceType === 'image' && !request.url().includes('favicon')) {
-          request.abort();
-        } else {
-          request.continue();
-        }
-      });
-
-      // 设置超时
-      await page.setDefaultNavigationTimeout(30000);
-      await page.setDefaultTimeout(30000);
-
-      const response = await page.goto(url, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
-
-      if (!response) {
-        throw new Error('页面加载失败: 无响应');
-      }
-
-      // 等待内容加载
-      await page.waitForTimeout(1000);
-
-      // 注入样式
-      await page.addStyleTag({
-        content: `
-          * { transition: none !important; animation: none !important; }
-          .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { display: none !important; }
-        `
-      });
-
-      // 滚动到顶部
-      await page.evaluate(() => window.scrollTo(0, 0));
-
-      const screenshot = await page.screenshot({
-        type: 'jpeg',
-        quality: 90,
-        fullPage: false,
-        clip: {
-          x: 0,
-          y: 0,
-          width: 1280,
-          height: 800
-        }
-      });
-
-      const processedScreenshot = await processImage(screenshot);
-      return processedScreenshot;
-
-    } catch (error) {
-      console.error(`截图失败 (尝试 ${attempt + 1}/${retryCount}):`, error);
-      attempt++;
-      
-      if (attempt === retryCount) {
-        console.error('所有截图尝试都失败了:', error);
-        return null;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-
-  return null;
-}
-
-async function uploadImage(imageData: Buffer | string): Promise<any> {
-  try {
-    let buffer: Buffer
-    
-    if (typeof imageData === 'string' && imageData.startsWith('data:')) {
-      // 如果是 Base64 图片，转换为 Buffer
-      const base64Data = imageData.split(',')[1]
-      buffer = Buffer.from(base64Data, 'base64')
-    } else {
-      buffer = imageData as Buffer
-    }
-
-    const imageAsset = await client.assets.upload('image', buffer, {
-      filename: `screenshot-${Date.now()}.jpg`,
-      contentType: 'image/jpeg',
     })
 
-    return imageAsset
+    // 创建新页面
+    const page = await browser.newPage()
+    
+    // 设置视口大小
+    await page.setViewport({ width: 1280, height: 800 })
+    
+    // 设置请求拦截
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      const resourceType = request.resourceType()
+      if (resourceType === 'image' || resourceType === 'media' || resourceType === 'font') {
+        request.abort()
+      } else {
+        request.continue()
+      }
+    })
+
+    // 导航到目标网址
+    await page.goto(url, { 
+      waitUntil: ['domcontentloaded', 'networkidle0'],
+      timeout: 15000 
+    })
+
+    // 等待页面加载
+    await page.waitForTimeout(2000)
+
+    // 注入样式以改善截图效果
+    await page.addStyleTag({
+      content: `
+        * { 
+          transition: none !important; 
+          animation: none !important;
+          scroll-behavior: auto !important;
+        }
+        .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { 
+          display: none !important; 
+        }
+      `
+    })
+
+    // 滚动到顶部
+    await page.evaluate(() => window.scrollTo(0, 0))
+
+    // 截图
+    const screenshot = await page.screenshot({
+      type: 'jpeg',
+      quality: 80,
+      fullPage: false,
+      clip: {
+        x: 0,
+        y: 0,
+        width: 1280,
+        height: 800
+      }
+    })
+
+    console.log('截图完成:', url)
+    return screenshot as Buffer
   } catch (error) {
-    console.error('图片上传失败:', error)
-    throw error
+    console.error('截图失败:', error)
+    return null
+  } finally {
+    if (browser) {
+      try {
+        await browser.close()
+      } catch (error) {
+        console.error('关闭浏览器失败:', error)
+      }
+    }
   }
 }
 
-export async function POST(req: Request) {
+async function uploadScreenshot(screenshot: Buffer) {
   try {
-    // 1. 获取并验证 URL
-    const { url } = await req.json()
-    if (!url) {
-      return NextResponse.json({ error: '请输入网址' }, { status: 400 })
+    const asset = await client.assets.upload('image', screenshot, {
+      contentType: 'image/jpeg',
+      filename: `screenshot-${Date.now()}.jpg`
+    })
+    return {
+      _type: 'image',
+      asset: {
+        _type: 'reference',
+        _ref: asset._id
+      }
     }
+  } catch (error) {
+    console.error('上传截图失败:', error)
+    return null
+  }
+}
 
-    // 2. 处理 URL 格式
-    let processedUrl = url.trim()
-    if (!processedUrl.match(/^https?:\/\//i)) {
-      processedUrl = `https://${processedUrl}`
-    }
+export async function POST(request: Request) {
+  console.log('API 路由开始处理请求')
+  console.log('环境变量状态:', {
+    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+    hasToken: !!process.env.SANITY_API_TOKEN,
+    hasGeminiKey: !!process.env.GEMINI_API_KEY
+  })
 
-    try {
-      new URL(processedUrl)
-    } catch (error) {
-      return NextResponse.json({ error: '无效的网址格式' }, { status: 400 })
-    }
+  // 检查登录状态
+  const cookieStore = cookies()
+  const isLoggedIn = cookieStore.get('isLoggedIn')?.value === 'true'
+  console.log('登录状态:', isLoggedIn)
+  
+  if (!isLoggedIn) {
+    return NextResponse.json(
+      { success: false, message: '未登录' },
+      { status: 401 }
+    )
+  }
 
-    // 3. 并行处理截图和 AI 分析
-    const [screenshot, analysis] = await Promise.all([
-      captureScreenshot(processedUrl),
-      analyzeUrl(processedUrl)
-    ])
-
-    // 4. 上传图片（使用实际截图或后备图片）
-    const imageAsset = await uploadImage(screenshot || FALLBACK_IMAGE)
-
-    // 5. 创建网站文档
-    const doc = await client.create({
-      _type: 'site',
-      title: analysis.title,
-      url: processedUrl,
-      description: analysis.description,
-      category: analysis.category,
-      screenshot: {
-        _type: 'image',
-        asset: {
-          _type: 'reference',
-          _ref: imageAsset._id
+  // 检查必要的配置
+  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || !process.env.SANITY_API_TOKEN || !process.env.GEMINI_API_KEY) {
+    console.error('缺少必要的环境变量配置')
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: '系统配置错误',
+        debug: {
+          hasProjectId: !!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+          hasDataset: !!process.env.NEXT_PUBLIC_SANITY_DATASET,
+          hasToken: !!process.env.SANITY_API_TOKEN,
+          hasGeminiKey: !!process.env.GEMINI_API_KEY
         }
       },
-      hasError: !screenshot, // 标记是否使用了后备图片
-      createdAt: new Date().toISOString(),
-    })
+      { status: 500 }
+    )
+  }
+
+  try {
+    const body = await request.json()
+    console.log('接收到的请求体:', body)
+    
+    const { urls } = body
+    
+    if (!Array.isArray(urls) || urls.length === 0) {
+      console.log('无效的URL列表:', urls)
+      return NextResponse.json(
+        { success: false, message: '无效的网址列表' },
+        { status: 400 }
+      )
+    }
+
+    console.log('准备处理的URL列表:', urls)
+
+    // 创建文档
+    const results = await Promise.all(
+      urls.map(async (url) => {
+        try {
+          console.log(`开始处理网站: ${url}`)
+
+          // 使用 Google AI 分析网站
+          console.log('调用 AI 分析...')
+          const analysis = await analyzeUrl(url)
+          console.log('AI 分析结果:', analysis)
+
+          // 获取网站截图
+          console.log('开始获取截图...')
+          const screenshot = await captureScreenshot(url)
+          let screenshotAsset = null
+          if (screenshot) {
+            console.log('开始上传截图...')
+            screenshotAsset = await uploadScreenshot(screenshot)
+          }
+          console.log('截图处理结果:', screenshotAsset)
+
+          const doc = {
+            _type: 'site',
+            url,
+            title: analysis.title,
+            description: analysis.description,
+            category: analysis.category[0],
+            screenshot: screenshotAsset,
+            createdAt: new Date().toISOString(),
+            status: screenshotAsset ? 'active' : 'pending'
+          }
+          console.log('准备创建文档:', doc)
+          const createdDoc = await client.create(doc)
+          console.log('文档创建成功:', createdDoc)
+
+          return createdDoc
+        } catch (error: any) {
+          console.error(`处理网站失败 (${url}):`, error)
+          throw error
+        }
+      })
+    )
+
+    console.log('所有网站处理完成:', results)
 
     return NextResponse.json({
-      ...doc,
-      screenshotStatus: screenshot ? 'success' : 'fallback'
+      success: true,
+      message: '添加成功',
+      count: results.length,
+      results
     })
-
-  } catch (error) {
+  } catch (error: any) {
     console.error('添加网站失败:', error)
+    
     return NextResponse.json(
-      { error: '添加失败，请稍后重试' },
+      { 
+        success: false, 
+        message: `服务器错误: ${error.message}`,
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      },
       { status: 500 }
     )
   }

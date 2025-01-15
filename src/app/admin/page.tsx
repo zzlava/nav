@@ -17,15 +17,39 @@ export default function AdminPage() {
 
     setIsLoading(true)
     try {
-      const urlList = urls.split('\n').filter(url => url.trim())
+      const urlList = urls.split('\n').filter(url => {
+        const trimmed = url.trim()
+        if (!trimmed) return false
+        try {
+          new URL(trimmed)
+          return true
+        } catch (error) {
+          console.error('无效的 URL:', trimmed)
+          return false
+        }
+      }).map(url => {
+        // 确保 URL 以 http:// 或 https:// 开头
+        let processedUrl = url.trim()
+        if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+          processedUrl = 'https://' + processedUrl
+        }
+        return processedUrl
+      })
+
+      if (urlList.length === 0) {
+        toast.error('没有有效的网址')
+        return
+      }
+
       console.log('准备提交的URL列表:', urlList)
       
-      const response = await fetch('/api/sites', {
+      const response = await fetch('/api/add-site', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ urls: urlList }),
+        credentials: 'include'
       })
 
       const data = await response.json()
