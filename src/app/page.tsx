@@ -21,6 +21,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('all')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [pauseAutoRefresh, setPauseAutoRefresh] = useState(false)
 
   // 检查登录状态
   useEffect(() => {
@@ -73,14 +74,21 @@ export default function Home() {
 
   // 定期刷新数据
   useEffect(() => {
+    if (pauseAutoRefresh) {
+      return;
+    }
+    
     const interval = setInterval(loadSites, 5000) // 每5秒刷新一次
     return () => clearInterval(interval)
-  }, [])
+  }, [pauseAutoRefresh])
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这个网站吗？')) return
 
     try {
+      // 暂停自动刷新
+      setPauseAutoRefresh(true)
+
       const response = await fetch(`/api/sites/${id}`, {
         method: 'DELETE',
         headers: {
@@ -97,8 +105,11 @@ export default function Home() {
       setSites(prevSites => prevSites.filter(site => site._id !== id))
       toast.success('删除成功')
       
-      // 延迟 5 秒后再刷新数据，避免与自动刷新冲突
-      setTimeout(loadSites, 5000)
+      // 等待 2 秒后恢复自动刷新
+      setTimeout(() => {
+        setPauseAutoRefresh(false)
+        loadSites()
+      }, 2000)
     } catch (error: any) {
       console.error('删除失败:', error)
       if (error.message === '未登录') {
@@ -106,6 +117,8 @@ export default function Home() {
       } else {
         toast.error(error.message || '删除失败，请重试')
       }
+      // 发生错误时也要恢复自动刷新
+      setPauseAutoRefresh(false)
     }
   }
 
