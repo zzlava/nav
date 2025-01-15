@@ -15,7 +15,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       console.log(`开始截图 (尝试 ${attempt + 1}/${retryCount}):`, url)
       
       // 获取 Chrome 可执行文件路径
-      const executablePath = await chrome.executablePath || '/usr/bin/chromium'
+      const executablePath = process.env.CHROME_EXECUTABLE_PATH || await chrome.executablePath
 
       console.log('Chrome 可执行文件路径:', executablePath)
 
@@ -23,41 +23,15 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       browser = await puppeteer.launch({
         args: [
           ...chrome.args,
-          '--autoplay-policy=user-gesture-required',
-          '--disable-background-networking',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-breakpad',
-          '--disable-client-side-phishing-detection',
-          '--disable-component-update',
-          '--disable-default-apps',
-          '--disable-dev-shm-usage',
-          '--disable-domain-reliability',
-          '--disable-extensions',
-          '--disable-features=AudioServiceOutOfProcess',
-          '--disable-hang-monitor',
-          '--disable-ipc-flooding-protection',
-          '--disable-notifications',
-          '--disable-offer-store-unmasked-wallet-cards',
-          '--disable-popup-blocking',
-          '--disable-print-preview',
-          '--disable-prompt-on-repost',
-          '--disable-renderer-backgrounding',
-          '--disable-setuid-sandbox',
-          '--disable-speech-api',
-          '--disable-sync',
-          '--hide-scrollbars',
-          '--ignore-gpu-blacklist',
-          '--metrics-recording-only',
-          '--mute-audio',
-          '--no-default-browser-check',
-          '--no-first-run',
-          '--no-pings',
           '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
           '--no-zygote',
-          '--password-store=basic',
-          '--use-gl=swiftshader',
-          '--use-mock-keychain',
+          '--disable-gpu',
+          '--hide-scrollbars',
+          '--mute-audio'
         ],
         defaultViewport: {
           width: 1280,
