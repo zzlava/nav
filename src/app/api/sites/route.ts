@@ -145,10 +145,17 @@ export async function POST(request: Request) {
             category: analysis.category[0],
             screenshot: screenshotAsset,
             createdAt: new Date().toISOString(),
-            status: 'pending'
+            status: screenshotAsset ? 'active' : 'pending'
           }
           console.log('准备创建文档:', doc)
-          return await client.create(doc)
+          const createdDoc = await client.create(doc)
+
+          // 如果创建成功但没有截图，标记为待处理
+          if (!screenshotAsset) {
+            console.log('网站创建成功但缺少截图，标记为待处理:', createdDoc._id)
+          }
+
+          return createdDoc
         } catch (error: any) {
           console.error('创建单个文档失败:', {
             url,

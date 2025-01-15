@@ -2,6 +2,14 @@ import { createClient } from '@sanity/client'
 import imageUrlBuilder from '@sanity/image-url'
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types'
 
+// 获取当前域名
+const getOrigin = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  return ''
+}
+
 // 直接使用环境变量，不进行中间存储
 export const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '',
@@ -9,6 +17,7 @@ export const client = createClient({
   apiVersion: '2024-01-06',
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
+  withCredentials: true,
 })
 
 // 打印配置信息（不包含敏感信息）
@@ -16,6 +25,7 @@ console.log('Sanity 配置信息:', {
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
   hasToken: !!process.env.SANITY_API_TOKEN,
+  origin: getOrigin(),
 })
 
 const builder = imageUrlBuilder(client)
@@ -49,7 +59,12 @@ export async function fetchSites() {
     const query = `*[_type == "site"] | order(createdAt desc)`
     console.log('执行查询:', query)
     
-    const sites = await client.fetch(query)
+    const sites = await client.fetch(query, {}, {
+      cache: 'no-cache',
+      headers: {
+        'Origin': getOrigin(),
+      }
+    })
     console.log('获取到的网站列表:', sites)
     
     if (!Array.isArray(sites)) {

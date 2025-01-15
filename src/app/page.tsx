@@ -20,6 +20,22 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('all')
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // 检查登录状态
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch('/api/check-login')
+        const data = await response.json()
+        setIsLoggedIn(data.isLoggedIn)
+      } catch (error) {
+        console.error('检查登录状态失败:', error)
+        setIsLoggedIn(false)
+      }
+    }
+    checkLoginStatus()
+  }, [])
 
   // 定义加载函数
   const loadSites = async () => {
@@ -72,7 +88,8 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        throw new Error('删除失败')
+        const data = await response.json()
+        throw new Error(data.message || '删除失败')
       }
 
       setSites(sites.filter(site => site._id !== id))
@@ -80,9 +97,13 @@ export default function Home() {
       
       // 删除成功后立即刷新数据
       await loadSites()
-    } catch (error) {
+    } catch (error: any) {
       console.error('删除失败:', error)
-      toast.error('删除失败，请重试')
+      if (error.message === '未登录') {
+        toast.error('请先在管理后台登录')
+      } else {
+        toast.error(error.message || '删除失败，请重试')
+      }
     }
   }
 
@@ -192,29 +213,21 @@ export default function Home() {
                 </p>
               </div>
               
-              {filteredSites.length === 0 ? (
-                <div className="flex min-h-[400px] flex-col items-center justify-center text-muted-foreground">
-                  <svg className="mb-4 h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                  <p className="text-lg">
-                    {activeCategory === 'all' 
-                      ? '还没有添加任何网站' 
-                      : `没有${categories.find(c => c.id === activeCategory)?.name}类网站`}
-                  </p>
-                  <p className="text-sm">请联系管理员添加网站</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredSites.map(site => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredSites.length > 0 ? (
+                  filteredSites.map((site) => (
                     <Card
                       key={site._id}
-                      {...site}
-                      onDelete={handleDelete}
+                      site={site}
+                      onDelete={isLoggedIn ? handleDelete : undefined}
                     />
-                  ))}
-                </div>
-              )}
+                  ))
+                ) : (
+                  <div className="col-span-full text-center text-muted-foreground">
+                    还没有添加任何网站
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

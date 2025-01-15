@@ -7,7 +7,15 @@ export const revalidate = 0
 export async function GET() {
   try {
     console.log('开始获取网站列表...')
-    const query = `*[_type == "site"] | order(createdAt desc)`
+    const query = `*[_type == "site" && (!defined(status) || status != "pending")] | order(createdAt desc) {
+      _id,
+      title,
+      description,
+      url,
+      category,
+      screenshot,
+      createdAt
+    }`
     console.log('执行查询:', query)
     
     const sites = await client.fetch(query, undefined, {
@@ -19,8 +27,15 @@ export async function GET() {
       console.error('获取到的数据不是数组:', sites)
       return NextResponse.json([], { status: 500 })
     }
+
+    const validSites = sites.filter(site => 
+      site._id && 
+      site.title && 
+      site.description && 
+      site.url
+    )
     
-    const response = NextResponse.json(sites)
+    const response = NextResponse.json(validSites)
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
