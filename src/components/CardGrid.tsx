@@ -123,11 +123,33 @@ export function CardGrid() {
       loadSites()
     }
 
+    // 监听 localStorage 变化
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'lastUpdate') {
+        console.log('检测到数据更新，立即刷新列表')
+        loadSites()
+      }
+    }
+
     window.addEventListener('site-added', handleSiteAdded)
+    window.addEventListener('storage', handleStorageChange)
+    
+    // 检查是否有最近的更新
+    const lastUpdate = localStorage.getItem('lastUpdate')
+    if (lastUpdate) {
+      const updateTime = new Date(lastUpdate)
+      const now = new Date()
+      const diffSeconds = (now.getTime() - updateTime.getTime()) / 1000
+      if (diffSeconds < 5) {
+        console.log('检测到最近的更新，立即刷新列表')
+        loadSites()
+      }
+    }
     
     return () => {
       console.log('CardGrid 组件卸载，清理事件监听和定时器')
       window.removeEventListener('site-added', handleSiteAdded)
+      window.removeEventListener('storage', handleStorageChange)
       clearInterval(interval)
     }
   }, [])

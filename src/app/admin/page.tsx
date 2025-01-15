@@ -38,11 +38,16 @@ export default function AdminPage() {
       if (data.success) {
         toast.success(`添加成功：${data.count} 个网址`)
         setUrls('')
+        
+        // 使用 localStorage 作为通信机制
+        localStorage.setItem('lastUpdate', new Date().toISOString())
+        
+        // 发送自定义事件
         const event = new CustomEvent('site-added')
         window.dispatchEvent(event)
-        setTimeout(() => {
-          window.dispatchEvent(event)
-        }, 2000)
+        
+        // 通过路由跳转到首页
+        window.location.href = '/'
       } else {
         toast.error(data.message || '添加失败')
       }
