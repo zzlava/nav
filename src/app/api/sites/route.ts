@@ -1,6 +1,79 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { client, createSite, testConnection } from '@/lib/sanity'
+import { client } from '@/lib/sanity'
+import puppeteer from 'puppeteer-core'
+import chrome from 'chrome-aws-lambda'
+
+async function captureScreenshot(url: string): Promise<Buffer | null> {
+  try {
+    console.log('开始截图:', url)
+    const browser = await puppeteer.launch({
+      args: chrome.args,
+      executablePath: await chrome.executablePath,
+      headless: true,
+    })
+
+    const page = await browser.newPage()
+    await page.setViewport({ width: 1280, height: 800 })
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
+    const screenshot = await page.screenshot({ 
+      type: 'jpeg',
+      encoding: 'binary'
+    }) as Buffer
+    await browser.close()
+
+    console.log('截图完成:', url)
+    return screenshot
+  } catch (error) {
+    console.error('截图失败:', error)
+    return null
+  }
+}
+
+async function uploadScreenshot(screenshot: Buffer) {
+  try {
+    const asset = await client.assets.upload('image', screenshot, {
+      contentType: 'image/jpeg',
+      filename: `screenshot-${Date.now()}.jpg`
+    })
+    return {
+      _type: 'image',
+      asset: {
+        _type: 'reference',
+        _ref: asset._id
+      }
+    }
+  } catch (error) {
+    console.error('上传截图失败:', error)
+    return null
+  }
+}
+
+async function getDescription(url: string) {
+  try {
+    const browser = await puppeteer.launch({
+      args: chrome.args,
+      executablePath: await chrome.executablePath,
+      headless: true,
+    })
+
+    const page = await browser.newPage()
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
+    
+    // 获取网站描述
+    const description = await page.evaluate(() => {
+      const metaDescription = document.querySelector('meta[name="description"]')?.getAttribute('content')
+      const ogDescription = document.querySelector('meta[property="og:description"]')?.getAttribute('content')
+      return metaDescription || ogDescription || ''
+    })
+
+    await browser.close()
+    return description
+  } catch (error) {
+    console.error('获取描述失败:', error)
+    return ''
+  }
+}
 
 export async function POST(request: Request) {
   console.log('API 路由开始处理请求')
@@ -40,26 +113,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 测试 Sanity 连接
-    console.log('开始测试数据库连接...')
-    const isConnected = await testConnection()
-    console.log('数据库连接测试结果:', isConnected)
-
-    if (!isConnected) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: '无法连接到数据库',
-          debug: {
-            projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-            dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
-            hasToken: !!process.env.SANITY_API_TOKEN
-          }
-        },
-        { status: 500 }
-      )
-    }
-
     const body = await request.json()
     console.log('接收到的请求体:', body)
     
@@ -97,14 +150,28 @@ export async function POST(request: Request) {
     const results = await Promise.all(
       validUrls.map(async (url) => {
         try {
+          // 获取网站描述
+          const description = await getDescription(url)
+          console.log('获取到的描述:', description)
+
+          // 获取网站截图
+          const screenshot = await captureScreenshot(url)
+          let screenshotAsset = null
+          if (screenshot) {
+            screenshotAsset = await uploadScreenshot(screenshot)
+          }
+          console.log('上传的截图:', screenshotAsset)
+
           const doc = {
             _type: 'site',
             url,
+            description,
+            screenshot: screenshotAsset,
             createdAt: new Date().toISOString(),
             status: 'pending'
           }
           console.log('准备创建文档:', doc)
-          return await createSite(doc)
+          return await client.create(doc)
         } catch (error: any) {
           console.error('创建单个文档失败:', {
             url,
