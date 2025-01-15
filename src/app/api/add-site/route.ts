@@ -15,7 +15,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       console.log(`开始截图 (尝试 ${attempt + 1}/${retryCount}):`, url)
       
       // 获取 Chrome 可执行文件路径
-      const executablePath = await chrome.executablePath
+      const executablePath = process.env.CHROME_EXECUTABLE_PATH || await chrome.executablePath
 
       if (!executablePath) {
         console.error('无法获取 Chrome 可执行文件路径')
@@ -32,16 +32,21 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-accelerated-2d-canvas',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process'
         ],
         defaultViewport: {
           width: 1280,
           height: 800,
           deviceScaleFactor: 1,
+          isMobile: false,
+          hasTouch: false,
+          isLandscape: true
         },
         executablePath,
         headless: true,
-        ignoreHTTPSErrors: true,
+        ignoreHTTPSErrors: true
       })
 
       // 创建新页面
@@ -66,13 +71,14 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       })
 
       // 设置超时
-      await page.setDefaultNavigationTimeout(15000)
-      await page.setDefaultTimeout(15000)
+      await page.setDefaultNavigationTimeout(30000)
+      await page.setDefaultTimeout(30000)
 
       // 导航到目标网址
+      console.log('正在访问网址:', url)
       const response = await page.goto(url, { 
-        waitUntil: 'domcontentloaded',
-        timeout: 15000
+        waitUntil: 'networkidle0',
+        timeout: 30000
       })
 
       if (!response) {
@@ -80,7 +86,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       }
 
       // 等待页面加载
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(2000)
 
       // 注入样式以改善截图效果
       await page.addStyleTag({
@@ -100,17 +106,22 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       // 滚动到顶部
       await page.evaluate(() => window.scrollTo(0, 0))
 
+      // 等待一下以确保页面渲染完成
+      await page.waitForTimeout(1000)
+
+      console.log('准备截图...')
       // 截图
       const screenshot = await page.screenshot({
         type: 'jpeg',
-        quality: 80,
+        quality: 85,
         fullPage: false,
         clip: {
           x: 0,
           y: 0,
           width: 1280,
           height: 800
-        }
+        },
+        encoding: 'binary'
       })
 
       console.log('截图完成:', url)
@@ -142,10 +153,12 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
 
 async function uploadScreenshot(screenshot: Buffer) {
   try {
+    console.log('开始上传截图，大小:', screenshot.length, '字节')
     const asset = await client.assets.upload('image', screenshot, {
       contentType: 'image/jpeg',
       filename: `screenshot-${Date.now()}.jpg`
     })
+    console.log('截图上传成功:', asset._id)
     return {
       _type: 'image',
       asset: {
