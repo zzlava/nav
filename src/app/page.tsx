@@ -81,12 +81,11 @@ export default function Home() {
     if (!window.confirm('确定要删除这个网站吗？')) return
 
     try {
-      const response = await fetch('/api/delete-site', {
+      const response = await fetch(`/api/sites/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id }),
+        }
       })
 
       if (!response.ok) {
@@ -94,6 +93,7 @@ export default function Home() {
         throw new Error(data.message || '删除失败')
       }
 
+      // 从本地状态中移除
       setSites(sites.filter(site => site._id !== id))
       toast.success('删除成功')
       
