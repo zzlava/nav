@@ -17,24 +17,11 @@ export default function AdminPage() {
 
     setIsLoading(true)
     try {
-      const urlList = urls.split('\n').filter(url => {
-        const trimmed = url.trim()
-        if (!trimmed) return false
-        try {
-          new URL(trimmed)
-          return true
-        } catch (error) {
-          console.error('无效的 URL:', trimmed)
-          return false
-        }
-      }).map(url => {
-        // 确保 URL 以 http:// 或 https:// 开头
-        let processedUrl = url.trim()
-        if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
-          processedUrl = 'https://' + processedUrl
-        }
-        return processedUrl
-      })
+      // 处理 URL 列表
+      const urlList = urls
+        .split('\n')
+        .map(url => url.trim())
+        .filter(url => url.length > 0)
 
       if (urlList.length === 0) {
         toast.error('没有有效的网址')
@@ -52,12 +39,19 @@ export default function AdminPage() {
         credentials: 'include'
       })
 
+      if (!response.ok) {
+        const text = await response.text()
+        console.error('服务器返回错误:', text)
+        try {
+          const data = JSON.parse(text)
+          throw new Error(data.message || '提交失败')
+        } catch (e) {
+          throw new Error(`服务器返回错误: ${response.status}`)
+        }
+      }
+
       const data = await response.json()
       console.log('服务器响应:', data)
-
-      if (!response.ok) {
-        throw new Error(data.message || '提交失败')
-      }
 
       if (data.success) {
         toast.success(`添加成功：${data.count} 个网址`)
@@ -69,9 +63,6 @@ export default function AdminPage() {
         // 发送自定义事件
         const event = new CustomEvent('site-added')
         window.dispatchEvent(event)
-        
-        // 通过路由跳转到首页
-        window.location.href = '/'
       } else {
         toast.error(data.message || '添加失败')
       }
