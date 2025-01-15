@@ -36,35 +36,33 @@ export async function DELETE(
       try {
         console.log('处理截图引用:', doc.screenshot.asset._ref)
         
-        // 使用 mutations 来处理删除操作
-        const mutations = [
-          // 先将所有引用此图片的文档的 screenshot 字段设为 null
-          {
-            patch: {
-              query: '*[references($ref)]',
-              params: { ref: doc.screenshot.asset._ref },
-              set: { screenshot: null }
-            }
-          },
-          // 删除图片资源
-          {
-            delete: {
-              id: doc.screenshot.asset._ref
-            }
-          },
-          // 删除主文档
-          {
-            delete: {
-              id: params.id
-            }
-          }
-        ]
-        
-        // 执行 mutations
-        console.log('执行删除操作...')
-        await client.mutate(mutations)
-        console.log('删除操作完成')
-        
+        // 先查找所有引用此图片的文档
+        const referringDocs = await client.fetch(
+          `*[references($ref)]._id`,
+          { ref: doc.screenshot.asset._ref }
+        )
+        console.log('引用此图片的文档:', referringDocs)
+
+        // 清除所有引用
+        for (const docId of referringDocs) {
+          await client
+            .patch(docId)
+            .unset(['screenshot'])
+            .commit()
+          console.log(`已清除文档 ${docId} 的引用`)
+        }
+
+        // 等待一秒确保更新生效
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // 删除图片资源
+        await client.delete(doc.screenshot.asset._ref)
+        console.log('已删除图片资源')
+
+        // 删除主文档
+        await client.delete(params.id)
+        console.log('已删除主文档')
+
       } catch (error) {
         console.error('处理删除操作失败:', error)
         throw error
