@@ -31,13 +31,24 @@ export async function DELETE(
       )
     }
 
-    // 2. 如果文档有截图，先删除截图资源
+    // 2. 如果文档有截图，先解除引用关系
     if (doc.screenshot?.asset?._ref) {
       try {
+        console.log('解除截图引用:', doc.screenshot.asset._ref)
+        // 先更新文档，移除截图引用
+        await client
+          .patch(params.id)
+          .unset(['screenshot'])
+          .commit()
+        
+        // 等待一秒，确保更新生效
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // 然后尝试删除图片资源
         console.log('删除截图资源:', doc.screenshot.asset._ref)
         await client.delete(doc.screenshot.asset._ref)
       } catch (error) {
-        console.error('删除截图资源失败:', error)
+        console.error('处理截图失败:', error)
         // 继续执行，不中断流程
       }
     }
