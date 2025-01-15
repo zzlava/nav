@@ -6,28 +6,96 @@ import chrome from 'chrome-aws-lambda'
 import { analyzeUrl } from '@/lib/gemini'
 
 async function captureScreenshot(url: string): Promise<Buffer | null> {
+  let browser = null
   try {
     console.log('开始截图:', url)
-    const browser = await puppeteer.launch({
-      args: chrome.args,
-      executablePath: await chrome.executablePath,
+    
+    // 获取 Chrome 可执行文件路径
+    const executablePath = await chrome.executablePath
+
+    if (!executablePath) {
+      console.error('无法获取 Chrome 可执行文件路径')
+      return null
+    }
+
+    // 启动浏览器
+    browser = await puppeteer.launch({
+      args: [...chrome.args, '--hide-scrollbars', '--disable-web-security'],
+      defaultViewport: chrome.defaultViewport,
+      executablePath,
       headless: true,
+      ignoreHTTPSErrors: true,
     })
 
+    // 创建新页面
     const page = await browser.newPage()
+    
+    // 设置视口大小
     await page.setViewport({ width: 1280, height: 800 })
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
-    const screenshot = await page.screenshot({ 
+    
+    // 设置请求拦截
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      const resourceType = request.resourceType()
+      if (resourceType === 'image' || resourceType === 'media' || resourceType === 'font') {
+        request.abort()
+      } else {
+        request.continue()
+      }
+    })
+
+    // 导航到目标网址
+    await page.goto(url, { 
+      waitUntil: ['domcontentloaded', 'networkidle0'],
+      timeout: 15000 
+    })
+
+    // 等待页面加载
+    await page.waitForTimeout(2000)
+
+    // 注入样式以改善截图效果
+    await page.addStyleTag({
+      content: `
+        * { 
+          transition: none !important; 
+          animation: none !important;
+          scroll-behavior: auto !important;
+        }
+        .modal, .popup, .overlay, [class*="modal"], [class*="popup"], [class*="overlay"] { 
+          display: none !important; 
+        }
+      `
+    })
+
+    // 滚动到顶部
+    await page.evaluate(() => window.scrollTo(0, 0))
+
+    // 截图
+    const screenshot = await page.screenshot({
       type: 'jpeg',
-      encoding: 'binary'
-    }) as Buffer
-    await browser.close()
+      quality: 80,
+      fullPage: false,
+      clip: {
+        x: 0,
+        y: 0,
+        width: 1280,
+        height: 800
+      }
+    })
 
     console.log('截图完成:', url)
-    return screenshot
+    return screenshot as Buffer
   } catch (error) {
     console.error('截图失败:', error)
     return null
+  } finally {
+    if (browser) {
+      try {
+        await browser.close()
+      } catch (error) {
+        console.error('关闭浏览器失败:', error)
+      }
+    }
   }
 }
 
