@@ -29,9 +29,10 @@ export default {
       type: 'string',
       options: {
         list: [
+          { title: '社交', value: 'social' },
+          { title: '技术', value: 'tech' },
+          { title: '新闻', value: 'news' },
           { title: '工具', value: 'tools' },
-          { title: '资源', value: 'resources' },
-          { title: '学习', value: 'learning' },
           { title: '其他', value: 'others' },
         ],
       },
@@ -41,5 +42,23 @@ export default {
       title: 'Created At',
       type: 'datetime',
     },
+    {
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      options: {
+        list: [
+          { title: '正常', value: 'active' },
+          { title: '待处理', value: 'pending' },
+        ],
+      },
+    },
   ],
+  preview: {
+    select: {
+      title: 'title',
+      subtitle: 'url',
+      media: 'screenshot'
+    }
+  }
 } 

@@ -6,6 +6,15 @@ if (!process.env.GEMINI_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
+// 分类映射表
+const categoryMap: Record<string, string> = {
+  '社交': 'social',
+  '技术': 'tech',
+  '新闻': 'news',
+  '工具': 'tools',
+  '其他': 'others'
+}
+
 export async function analyzeUrl(url: string) {
   try {
     console.log('开始分析网站:', url)
@@ -49,19 +58,15 @@ export async function analyzeUrl(url: string) {
       }
 
       // 确保 category 是数组且只包含一个元素
-      const category = Array.isArray(parsed.category) ? parsed.category[0] : parsed.category
+      const chineseCategory = Array.isArray(parsed.category) ? parsed.category[0] : parsed.category
       
-      // 验证分类是否有效
-      const validCategories = ['社交', '技术', '新闻', '工具', '其他']
-      if (!validCategories.includes(category)) {
-        console.warn('无效的分类:', category)
-        parsed.category = ['其他']
-      }
+      // 将中文分类转换为英文
+      const englishCategory = categoryMap[chineseCategory] || 'others'
 
       const result = {
         title: parsed.title.trim().slice(0, 20),
         description: parsed.description.trim().slice(0, 100),
-        category: [category]
+        category: englishCategory // 返回英文分类
       }
 
       console.log('最终分析结果:', result)
@@ -73,7 +78,7 @@ export async function analyzeUrl(url: string) {
       const defaultResult = {
         title: urlObj.hostname.replace(/^www\./, ''),
         description: `这是一个网站：${url}`,
-        category: ['其他']
+        category: 'others'
       }
       console.log('使用默认值:', defaultResult)
       return defaultResult
@@ -85,7 +90,7 @@ export async function analyzeUrl(url: string) {
     const defaultResult = {
       title: urlObj.hostname.replace(/^www\./, ''),
       description: `这是一个网站：${url}`,
-      category: ['其他']
+      category: 'others'
     }
     console.log('使用默认值:', defaultResult)
     return defaultResult
