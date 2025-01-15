@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchSites } from '@/lib/sanity'
 import Card from '@/components/Card'
 import ThemeToggle from '@/components/theme-toggle'
 import { toast } from 'react-hot-toast'
@@ -27,7 +26,11 @@ export default function Home() {
     try {
       setError(null)
       console.log('开始加载网站列表...')
-      const data = await fetchSites()
+      const response = await fetch('/api/sites/list')
+      if (!response.ok) {
+        throw new Error('加载失败')
+      }
+      const data = await response.json()
       console.log('加载到的网站列表:', data)
       setSites(data)
     } catch (error: any) {
