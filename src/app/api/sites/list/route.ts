@@ -7,19 +7,21 @@ export const revalidate = 0
 export async function GET() {
   try {
     console.log('开始获取网站列表...')
-    const query = `*[_type == "site" && (!defined(status) || status != "pending")] | order(createdAt desc) {
+    const query = `*[_type == "site"] | order(createdAt desc) {
       _id,
       title,
       description,
       url,
       category,
       screenshot,
+      status,
       createdAt
     }`
     console.log('执行查询:', query)
     
     const sites = await client.fetch(query, undefined, {
-      cache: 'no-cache'
+      cache: 'no-cache',
+      next: { revalidate: 0 }
     })
     console.log('获取到的网站列表:', sites)
     
@@ -39,6 +41,7 @@ export async function GET() {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
+    response.headers.set('Surrogate-Control', 'no-store')
     
     return response
   } catch (error: any) {

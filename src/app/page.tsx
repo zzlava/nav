@@ -42,11 +42,13 @@ export default function Home() {
     try {
       setError(null)
       console.log('开始加载网站列表...')
-      const response = await fetch('/api/sites/list', {
+      const timestamp = new Date().getTime() // 添加时间戳防止缓存
+      const response = await fetch(`/api/sites/list?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       })
       if (!response.ok) {
@@ -185,62 +187,4 @@ export default function Home() {
                 <button
                   key={category.id}
                   onClick={() => setActiveCategory(category.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
-                    activeCategory === category.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <span className="text-base">{category.icon}</span>
-                  <span>{category.name}</span>
-                  {activeCategory === category.id && (
-                    <span className="ml-auto text-xs font-medium">
-                      {filteredSites.length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 右侧内容区域 */}
-          <div className="flex-1">
-            <div className="rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-foreground">网站列表</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  点击卡片访问对应网站
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredSites.length > 0 ? (
-                  filteredSites.map((site) => (
-                    <Card
-                      key={site._id}
-                      site={site}
-                      onDelete={isLoggedIn ? handleDelete : undefined}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-full text-center text-muted-foreground">
-                    还没有添加任何网站
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 页脚 */}
-      <footer className="mt-8 border-t py-6">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <div className="text-center text-sm text-muted-foreground">
-            使用 Next.js + Sanity + Tailwind CSS 构建
-          </div>
-        </div>
-      </footer>
-    </main>
-  )
-} 
+                  className={`
