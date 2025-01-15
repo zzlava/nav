@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { client } from '@/lib/sanity'
 import puppeteer from 'puppeteer-core'
 import chrome from 'chrome-aws-lambda'
+import { analyzeUrl } from '@/lib/gemini'
 
 async function captureScreenshot(url: string): Promise<Buffer | null> {
   try {
@@ -46,32 +47,6 @@ async function uploadScreenshot(screenshot: Buffer) {
   } catch (error) {
     console.error('上传截图失败:', error)
     return null
-  }
-}
-
-async function getDescription(url: string) {
-  try {
-    const browser = await puppeteer.launch({
-      args: chrome.args,
-      executablePath: await chrome.executablePath,
-      headless: true,
-    })
-
-    const page = await browser.newPage()
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
-    
-    // 获取网站描述
-    const description = await page.evaluate(() => {
-      const metaDescription = document.querySelector('meta[name="description"]')?.getAttribute('content')
-      const ogDescription = document.querySelector('meta[property="og:description"]')?.getAttribute('content')
-      return metaDescription || ogDescription || ''
-    })
-
-    await browser.close()
-    return description
-  } catch (error) {
-    console.error('获取描述失败:', error)
-    return ''
   }
 }
 
@@ -150,9 +125,9 @@ export async function POST(request: Request) {
     const results = await Promise.all(
       validUrls.map(async (url) => {
         try {
-          // 获取网站描述
-          const description = await getDescription(url)
-          console.log('获取到的描述:', description)
+          // 使用 Google AI 分析网站
+          const analysis = await analyzeUrl(url)
+          console.log('AI 分析结果:', analysis)
 
           // 获取网站截图
           const screenshot = await captureScreenshot(url)
@@ -165,7 +140,9 @@ export async function POST(request: Request) {
           const doc = {
             _type: 'site',
             url,
-            description,
+            title: analysis.title,
+            description: analysis.description,
+            category: analysis.category[0],
             screenshot: screenshotAsset,
             createdAt: new Date().toISOString(),
             status: 'pending'
