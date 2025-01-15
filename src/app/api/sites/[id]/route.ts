@@ -6,7 +6,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  console.log('开始处理删除请求:', params.id)
+  console.log('开始处理软删除请求:', params.id)
   
   // 检查登录状态
   const cookieStore = cookies()
@@ -31,47 +31,16 @@ export async function DELETE(
       )
     }
 
-    // 2. 如果文档有截图，处理引用关系
-    if (doc.screenshot?.asset?._ref) {
-      try {
-        console.log('处理截图引用:', doc.screenshot.asset._ref)
-        
-        // 先查找所有引用此图片的文档
-        const referringDocs = await client.fetch(
-          `*[references($ref)]._id`,
-          { ref: doc.screenshot.asset._ref }
-        )
-        console.log('引用此图片的文档:', referringDocs)
-
-        // 清除所有引用
-        for (const docId of referringDocs) {
-          await client
-            .patch(docId)
-            .unset(['screenshot'])
-            .commit()
-          console.log(`已清除文档 ${docId} 的引用`)
-        }
-
-        // 等待一秒确保更新生效
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // 删除图片资源
-        await client.delete(doc.screenshot.asset._ref)
-        console.log('已删除图片资源')
-
-        // 删除主文档
-        await client.delete(params.id)
-        console.log('已删除主文档')
-
-      } catch (error) {
-        console.error('处理删除操作失败:', error)
-        throw error
-      }
-    } else {
-      // 如果没有截图，直接删除文档
-      console.log('直接删除文档:', params.id)
-      await client.delete(params.id)
-    }
+    // 2. 更新文档状态为已删除
+    await client
+      .patch(params.id)
+      .set({
+        status: 'deleted',
+        deletedAt: new Date().toISOString()
+      })
+      .commit()
+    
+    console.log('文档已标记为删除状态')
 
     return NextResponse.json({
       success: true,

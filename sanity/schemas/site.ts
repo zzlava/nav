@@ -56,7 +56,8 @@ export default defineType({
       options: {
         list: [
           { title: '正常', value: 'active' },
-          { title: '待处理', value: 'pending' }
+          { title: '待处理', value: 'pending' },
+          { title: '已删除', value: 'deleted' }
         ]
       },
       initialValue: 'pending'
@@ -66,6 +67,12 @@ export default defineType({
       title: '创建时间',
       type: 'datetime',
       initialValue: () => new Date().toISOString()
+    }),
+    defineField({
+      name: 'deletedAt',
+      title: '删除时间',
+      type: 'datetime',
+      hidden: true
     })
   ],
   preview: {
