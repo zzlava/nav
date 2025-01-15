@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { client } from '@/lib/sanity'
+import { client, createSite, testConnection } from '@/lib/sanity'
 
 export async function POST(request: Request) {
   // 检查登录状态
@@ -15,6 +15,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 测试 Sanity 连接
+    const isConnected = await testConnection()
+    if (!isConnected) {
+      return NextResponse.json(
+        { success: false, message: '无法连接到数据库' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.json()
     console.log('接收到的请求体:', body)
     
@@ -48,30 +57,24 @@ export async function POST(request: Request) {
 
     console.log('准备创建的有效URL:', validUrls)
 
-    // 创建Sanity文档
-    const documents = validUrls.map(url => ({
-      _id: `site-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      _type: 'site',
-      url,
-      createdAt: new Date().toISOString(),
-      status: 'pending'
-    }))
+    // 创建文档
+    const results = await Promise.all(
+      validUrls.map(url => 
+        createSite({
+          _type: 'site',
+          url,
+          createdAt: new Date().toISOString(),
+          status: 'pending'
+        })
+      )
+    )
 
-    console.log('准备创建的文档:', documents)
-
-    // 使用事务批量创建文档
-    const transaction = documents.reduce((tx, doc) => {
-      return tx.createIfNotExists(doc)
-    }, client.transaction())
-
-    console.log('开始提交事务...')
-    await transaction.commit()
-    console.log('事务提交成功')
+    console.log('创建结果:', results)
 
     return NextResponse.json({
       success: true,
       message: '添加成功',
-      count: validUrls.length
+      count: results.length
     })
   } catch (error: any) {
     console.error('添加网站失败:', {
