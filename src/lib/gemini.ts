@@ -1,10 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-if (!process.env.GEMINI_API_KEY) {
-  console.error('缺少 GEMINI_API_KEY 环境变量')
+// 检查环境变量
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY
+if (!apiKey) {
+  console.error('缺少 GEMINI_API_KEY 或 GOOGLE_AI_API_KEY 环境变量')
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const genAI = new GoogleGenerativeAI(apiKey || '')
 
 // 分类映射表
 const categoryMap: Record<string, string> = {
@@ -18,6 +20,12 @@ const categoryMap: Record<string, string> = {
 export async function analyzeUrl(url: string) {
   try {
     console.log('开始分析网站:', url)
+    console.log('API Key 状态:', {
+      hasGeminiKey: !!process.env.GEMINI_API_KEY,
+      hasGoogleKey: !!process.env.GOOGLE_AI_API_KEY,
+      finalKey: !!apiKey
+    })
+    
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
     const prompt = `分析这个网站 ${url}，并以 JSON 格式返回以下信息：
@@ -45,6 +53,7 @@ export async function analyzeUrl(url: string) {
       // 尝试从响应中提取 JSON
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
+        console.error('无法从响应中提取 JSON:', text)
         throw new Error('无效的响应格式')
       }
 
@@ -53,6 +62,7 @@ export async function analyzeUrl(url: string) {
       
       // 验证必要字段
       if (!parsed.title || !parsed.description || !parsed.category) {
+        console.error('返回的数据不完整:', parsed)
         throw new Error('返回的数据格式不完整')
       }
 

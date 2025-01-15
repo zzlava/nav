@@ -61,8 +61,10 @@ export default function AdminPage() {
         localStorage.setItem('lastUpdate', new Date().toISOString())
         
         // 发送自定义事件
-        const event = new CustomEvent('site-added')
-        window.dispatchEvent(event)
+        window.dispatchEvent(new CustomEvent('site-added'))
+        
+        // 强制刷新页面
+        window.location.href = '/'
       } else {
         toast.error(data.message || '添加失败')
       }
