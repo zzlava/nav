@@ -31,11 +31,8 @@ export default defineType({
       options: {
         hotspot: true,
         storeOriginalFilename: false,
-        accept: 'image/jpeg,image/png',
-        metadata: ['dimensions', 'hasAlpha'],
-      },
-      // 添加删除规则
-      weak: true
+        accept: 'image/jpeg,image/png'
+      }
     }),
     defineField({
       name: 'category',
