@@ -15,26 +15,49 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       console.log(`开始截图 (尝试 ${attempt + 1}/${retryCount}):`, url)
       
       // 获取 Chrome 可执行文件路径
-      const executablePath = process.env.CHROME_EXECUTABLE_PATH || await chrome.executablePath
+      const executablePath = await chrome.executablePath || '/usr/bin/chromium'
 
-      if (!executablePath) {
-        console.error('无法获取 Chrome 可执行文件路径')
-        return null
-      }
+      console.log('Chrome 可执行文件路径:', executablePath)
 
       // 启动浏览器
       browser = await puppeteer.launch({
         args: [
           ...chrome.args,
-          '--hide-scrollbars',
-          '--disable-web-security',
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
+          '--autoplay-policy=user-gesture-required',
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-update',
+          '--disable-default-apps',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process'
+          '--disable-domain-reliability',
+          '--disable-extensions',
+          '--disable-features=AudioServiceOutOfProcess',
+          '--disable-hang-monitor',
+          '--disable-ipc-flooding-protection',
+          '--disable-notifications',
+          '--disable-offer-store-unmasked-wallet-cards',
+          '--disable-popup-blocking',
+          '--disable-print-preview',
+          '--disable-prompt-on-repost',
+          '--disable-renderer-backgrounding',
+          '--disable-setuid-sandbox',
+          '--disable-speech-api',
+          '--disable-sync',
+          '--hide-scrollbars',
+          '--ignore-gpu-blacklist',
+          '--metrics-recording-only',
+          '--mute-audio',
+          '--no-default-browser-check',
+          '--no-first-run',
+          '--no-pings',
+          '--no-sandbox',
+          '--no-zygote',
+          '--password-store=basic',
+          '--use-gl=swiftshader',
+          '--use-mock-keychain',
         ],
         defaultViewport: {
           width: 1280,
@@ -120,8 +143,7 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
           y: 0,
           width: 1280,
           height: 800
-        },
-        encoding: 'binary'
+        }
       })
 
       console.log('截图完成:', url)
