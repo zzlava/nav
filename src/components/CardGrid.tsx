@@ -105,7 +105,7 @@ export function CardGrid() {
       {sites.map(site => (
         <Card
           key={site._id}
-          {...site}
+          site={site}
           onDelete={handleDelete}
         />
       ))}
