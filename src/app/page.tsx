@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { fetchSites } from '@/lib/sanity'
 import Card from '@/components/Card'
 import ThemeToggle from '@/components/theme-toggle'
+import { toast } from 'react-hot-toast'
 
 // 定义分类
 const categories = [
@@ -18,22 +19,36 @@ const categories = [
 export default function Home() {
   const [sites, setSites] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('all')
 
-  useEffect(() => {
-    loadSites()
-  }, [])
-
+  // 定义加载函数
   const loadSites = async () => {
     try {
+      setError(null)
+      console.log('开始加载网站列表...')
       const data = await fetchSites()
+      console.log('加载到的网站列表:', data)
       setSites(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('加载网站失败:', error)
+      setError(error.message || '加载失败')
+      toast.error('加载网站列表失败，请刷新页面重试')
     } finally {
       setLoading(false)
     }
   }
+
+  // 首次加载
+  useEffect(() => {
+    loadSites()
+  }, [])
+
+  // 定期刷新数据
+  useEffect(() => {
+    const interval = setInterval(loadSites, 30000) // 每30秒刷新一次
+    return () => clearInterval(interval)
+  }, [])
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这个网站吗？')) return
@@ -52,8 +67,10 @@ export default function Home() {
       }
 
       setSites(sites.filter(site => site._id !== id))
+      toast.success('删除成功')
     } catch (error) {
       console.error('删除失败:', error)
+      toast.error('删除失败，请重试')
     }
   }
 
@@ -68,6 +85,24 @@ export default function Home() {
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-8">
           <div className="text-center text-muted-foreground">
             加载中...
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-8">
+          <div className="text-center text-red-500">
+            {error}
+            <button
+              onClick={loadSites}
+              className="ml-4 text-blue-500 hover:underline"
+            >
+              重试
+            </button>
           </div>
         </div>
       </div>
@@ -89,6 +124,12 @@ export default function Home() {
               </span>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={loadSites}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                刷新
+              </button>
               <a
                 href="/admin"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"

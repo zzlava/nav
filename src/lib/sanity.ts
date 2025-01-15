@@ -45,10 +45,26 @@ export async function testConnection() {
 
 export async function fetchSites() {
   try {
-    const sites = await client.fetch(`*[_type == "site"] | order(createdAt desc)`)
+    console.log('开始获取网站列表...')
+    const query = `*[_type == "site"] | order(createdAt desc)`
+    console.log('执行查询:', query)
+    
+    const sites = await client.fetch(query)
+    console.log('获取到的网站列表:', sites)
+    
+    if (!Array.isArray(sites)) {
+      console.error('获取到的数据不是数组:', sites)
+      return []
+    }
+    
     return sites
-  } catch (error) {
-    console.error('获取网站列表失败:', error)
+  } catch (error: any) {
+    console.error('获取网站列表失败:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      details: error.details,
+      stack: error.stack
+    })
     return []
   }
 }
