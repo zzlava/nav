@@ -1,5 +1,4 @@
-import { Rule } from '@sanity/types'
-import { defineType, defineField } from 'sanity'
+import { defineField, defineType } from 'sanity'
 
 export default defineType({
   name: 'site',
@@ -10,13 +9,15 @@ export default defineType({
       name: 'url',
       title: '网址',
       type: 'url',
-      validation: (rule: Rule) => rule.required()
+      validation: Rule => Rule.required().uri({
+        scheme: ['http', 'https']
+      })
     }),
     defineField({
       name: 'title',
       title: '标题',
       type: 'string',
-      validation: (rule: Rule) => rule.required()
+      validation: Rule => Rule.required()
     }),
     defineField({
       name: 'description',
@@ -34,12 +35,7 @@ export default defineType({
         metadata: ['dimensions', 'hasAlpha'],
       },
       // 添加删除规则
-      weak: true,
-      validation: (rule: Rule) => rule.custom((value: any, context: any) => {
-        if (!value) return true
-        if (!value.asset) return true
-        return true
-      })
+      weak: true
     }),
     defineField({
       name: 'category',
@@ -54,7 +50,7 @@ export default defineType({
           { title: '其他', value: 'others' }
         ]
       },
-      validation: (rule: Rule) => rule.required()
+      validation: Rule => Rule.required()
     }),
     defineField({
       name: 'status',
