@@ -7,13 +7,18 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
   try {
     console.log('使用 thum.io 获取截图:', url)
     const auth = '73212-088cfe418adf4a1658b4d4aa9d0d31fb'
-    const thumbUrl = `//image.thum.io/get/auth/${auth}/${url}`
+    const thumbUrl = `//image.thum.io/get/auth/${auth}/width/1280/crop/800/delay/3/noanimate/png/${url}`
     
     // 添加协议前缀
     const fullUrl = `https:${thumbUrl}`
     console.log('完整的 thum.io URL:', fullUrl)
     
-    const response = await fetch(fullUrl)
+    const response = await fetch(fullUrl, {
+      headers: {
+        'Accept': 'image/png,image/*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    })
     console.log('thum.io 响应状态:', response.status, response.statusText)
     console.log('thum.io 响应头:', Object.fromEntries(response.headers.entries()))
     
@@ -52,8 +57,8 @@ async function uploadScreenshot(screenshot: Buffer) {
     })
     
     const asset = await client.assets.upload('image', screenshot, {
-      contentType: 'image/jpeg',
-      filename: `screenshot-${Date.now()}.jpg`
+      contentType: 'image/png',
+      filename: `screenshot-${Date.now()}.png`
     })
     
     console.log('截图上传成功:', asset)
