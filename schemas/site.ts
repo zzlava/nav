@@ -1,48 +1,49 @@
 export default {
   name: 'site',
-  title: 'Site',
+  title: '网站',
   type: 'document',
   fields: [
     {
-      name: 'title',
-      title: 'Title',
-      type: 'string',
-      validation: (Rule: any) => Rule.required(),
-    },
-    {
       name: 'url',
-      title: 'URL',
+      title: '网址',
       type: 'url',
       validation: (Rule: any) => Rule.required(),
     },
     {
-      name: 'description',
-      title: 'Description',
-      type: 'text',
+      name: 'createdAt',
+      title: '创建时间',
+      type: 'datetime',
+      validation: (Rule: any) => Rule.required(),
     },
     {
-      name: 'category',
-      title: 'Category',
+      name: 'status',
+      title: '状态',
       type: 'string',
       options: {
         list: [
-          { title: '工具', value: 'tools' },
-          { title: '资源', value: 'resources' },
-          { title: '学习', value: 'learning' },
-          { title: '其他', value: 'others' },
+          { title: '待处理', value: 'pending' },
+          { title: '处理中', value: 'processing' },
+          { title: '已完成', value: 'completed' },
+          { title: '失败', value: 'failed' }
         ],
       },
+      initialValue: 'pending',
     },
     {
-      name: 'createdAt',
-      title: 'Created At',
+      name: 'lastProcessed',
+      title: '最后处理时间',
       type: 'datetime',
     },
     {
-      name: 'hasError',
-      title: '截图是否失败',
-      type: 'boolean',
-      initialValue: false
+      name: 'error',
+      title: '错误信息',
+      type: 'text',
     }
   ],
+  preview: {
+    select: {
+      title: 'url',
+      subtitle: 'status'
+    }
+  }
 } 
