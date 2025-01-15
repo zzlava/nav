@@ -20,7 +20,6 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
       }
     })
     console.log('thum.io 响应状态:', response.status, response.statusText)
-    console.log('thum.io 响应头:', Object.fromEntries(response.headers.entries()))
     
     if (!response.ok) {
       throw new Error(`截图服务返回错误: ${response.status} ${response.statusText}`)
@@ -29,12 +28,12 @@ async function captureScreenshot(url: string): Promise<Buffer | null> {
     const arrayBuffer = await response.arrayBuffer()
     console.log('获取到的数据大小:', arrayBuffer.byteLength, '字节')
     
-    const buffer = Buffer.from(arrayBuffer)
-    console.log('转换后的 Buffer 大小:', buffer.length, '字节')
-    
-    if (buffer.length === 0) {
+    if (arrayBuffer.byteLength === 0) {
       throw new Error('截图数据为空')
     }
+    
+    const buffer = Buffer.from(arrayBuffer)
+    console.log('转换后的 Buffer 大小:', buffer.length, '字节')
     
     return buffer
   } catch (error) {
@@ -120,7 +119,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json()
+    let body;
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('解析请求体失败:', error)
+      return NextResponse.json(
+        { success: false, message: '无效的请求数据' },
+        { status: 400 }
+      )
+    }
+    
     console.log('接收到的请求体:', body)
     
     const { urls } = body
@@ -198,9 +207,9 @@ export async function POST(request: Request) {
           const doc = {
             _type: 'site',
             url,
-            title: analysis.title,
-            description: analysis.description,
-            category: analysis.category,
+            title: analysis.title || url,
+            description: analysis.description || '',
+            category: analysis.category || 'others',
             screenshot: screenshotAsset,
             createdAt: new Date().toISOString(),
             status: screenshotAsset ? 'active' : 'pending'
@@ -212,17 +221,34 @@ export async function POST(request: Request) {
           return createdDoc
         } catch (error: any) {
           console.error(`处理网站失败 (${url}):`, error)
-          throw error
+          return {
+            url,
+            error: error.message || '处理失败'
+          }
         }
       })
     )
 
     console.log('所有网站处理完成:', results)
 
+    // 检查是否所有处理都失败了
+    const allFailed = results.every(result => 'error' in result)
+    if (allFailed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '所有网站处理都失败了',
+          results 
+        },
+        { status: 500 }
+      )
+    }
+
+    // 返回处理结果
     return NextResponse.json({
       success: true,
-      message: '添加成功',
-      count: results.length,
+      message: results.some(result => 'error' in result) ? '部分网站添加成功' : '添加成功',
+      count: results.filter(result => !('error' in result)).length,
       results
     })
   } catch (error: any) {
