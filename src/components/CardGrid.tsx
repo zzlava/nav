@@ -24,18 +24,57 @@ export function CardGrid() {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          'Accept': 'application/json'
         }
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || '加载失败')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('加载失败:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        })
+        throw new Error(errorData.message || `加载失败: ${response.status}`)
       }
       
       const data = await response.json()
-      console.log('获取到的网站列表:', data)
-      setSites(data)
+      console.log('获取到的网站列表:', {
+        count: data.length,
+        sites: data
+      })
+
+      // 验证数据格式
+      if (!Array.isArray(data)) {
+        console.error('返回的数据不是数组:', data)
+        throw new Error('数据格式错误')
+      }
+
+      // 过滤无效数据
+      const validSites = data.filter(site => 
+        site && 
+        site._id && 
+        site.title && 
+        site.description && 
+        site.url
+      )
+
+      if (validSites.length !== data.length) {
+        console.warn('存在无效的网站数据:', {
+          total: data.length,
+          valid: validSites.length,
+          invalid: data.filter(site => 
+            !site || 
+            !site._id || 
+            !site.title || 
+            !site.description || 
+            !site.url
+          )
+        })
+      }
+
+      setSites(validSites)
     } catch (error: any) {
       console.error('加载网站列表失败:', error)
       toast.error(error.message || '加载失败')
@@ -69,20 +108,25 @@ export function CardGrid() {
 
   // 监听添加事件
   useEffect(() => {
+    console.log('CardGrid 组件已挂载，开始加载数据...')
     loadSites()
 
     // 设置定期刷新
-    const interval = setInterval(loadSites, 5000) // 每5秒刷新一次
+    const interval = setInterval(() => {
+      console.log('执行定期刷新...')
+      loadSites()
+    }, 5000)
 
     // 监听自定义事件
     const handleSiteAdded = () => {
-      console.log('检测到新网站添加，刷新列表')
+      console.log('检测到新网站添加，立即刷新列表')
       loadSites()
     }
 
     window.addEventListener('site-added', handleSiteAdded)
     
     return () => {
+      console.log('CardGrid 组件卸载，清理事件监听和定时器')
       window.removeEventListener('site-added', handleSiteAdded)
       clearInterval(interval)
     }

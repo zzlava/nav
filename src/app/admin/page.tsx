@@ -38,6 +38,11 @@ export default function AdminPage() {
       if (data.success) {
         toast.success(`添加成功：${data.count} 个网址`)
         setUrls('')
+        const event = new CustomEvent('site-added')
+        window.dispatchEvent(event)
+        setTimeout(() => {
+          window.dispatchEvent(event)
+        }, 2000)
       } else {
         toast.error(data.message || '添加失败')
       }
@@ -50,31 +55,28 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">管理后台</h1>
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">批量添加网站</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="urls" className="block text-sm font-medium text-gray-700 mb-2">
-              网址列表（每行一个）
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">批量添加网站</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              网站列表（每行一个）
             </label>
             <textarea
-              id="urls"
-              rows={10}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               value={urls}
               onChange={(e) => setUrls(e.target.value)}
+              className="w-full h-48 p-3 rounded-lg border focus:ring-2 focus:ring-primary"
               placeholder="https://example.com&#10;https://another-example.com"
               disabled={isLoading}
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             disabled={isLoading}
+            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
           >
-            {isLoading ? '处理中...' : '提交'}
+            {isLoading ? '提交中...' : '提交'}
           </button>
         </form>
       </div>
