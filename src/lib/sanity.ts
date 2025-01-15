@@ -4,12 +4,28 @@ import type { SanityImageSource } from '@sanity/image-url/lib/types/types'
 
 export const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
 export const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
+export const apiToken = process.env.SANITY_API_TOKEN
 
-export const client = createClient({
+// 打印配置信息（不包含敏感信息）
+console.log('Sanity 配置信息:', {
   projectId,
   dataset,
+  hasToken: !!apiToken,
+})
+
+if (!projectId || !dataset || !apiToken) {
+  console.error('缺少必要的 Sanity 配置:', {
+    hasProjectId: !!projectId,
+    hasDataset: !!dataset,
+    hasToken: !!apiToken,
+  })
+}
+
+export const client = createClient({
+  projectId: projectId || '',
+  dataset,
   apiVersion: '2024-01-06',
-  token: process.env.SANITY_API_TOKEN,
+  token: apiToken,
   useCdn: false,
   perspective: 'published',
   stega: false,
@@ -24,11 +40,18 @@ export function urlFor(source: SanityImageSource | undefined) {
 // 测试 Sanity 连接
 export async function testConnection() {
   try {
-    const result = await client.fetch('*[_type == "site"][0]')
+    console.log('开始测试 Sanity 连接...')
+    // 尝试一个简单的查询
+    const result = await client.fetch('*[_type == "site"][0...1]')
     console.log('Sanity 连接测试结果:', result)
     return true
-  } catch (error) {
-    console.error('Sanity 连接测试失败:', error)
+  } catch (error: any) {
+    console.error('Sanity 连接测试失败:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      details: error.details,
+      stack: error.stack,
+    })
     return false
   }
 }
@@ -45,11 +68,17 @@ export async function fetchSites() {
 
 export async function createSite(doc: any) {
   try {
+    console.log('准备创建文档:', doc)
     const result = await client.create(doc)
     console.log('创建文档成功:', result)
     return result
-  } catch (error) {
-    console.error('创建文档失败:', error)
+  } catch (error: any) {
+    console.error('创建文档失败:', {
+      error,
+      message: error.message,
+      statusCode: error.statusCode,
+      details: error.details,
+    })
     throw error
   }
 }
