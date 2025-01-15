@@ -5,8 +5,10 @@ export async function GET() {
   try {
     console.log('开始获取网站列表')
     
-    // 只获取未删除的网站
-    const sites = await client.fetch(`*[_type == "site" && status != "deleted"] | order(createdAt desc)`)
+    // 明确指定只获取 status 不为 deleted 或 status 字段不存在的网站
+    const sites = await client.fetch(
+      `*[_type == "site" && (status != "deleted" || !defined(status))] | order(createdAt desc)`
+    )
     console.log('获取到的网站数量:', sites.length)
 
     return NextResponse.json(sites)

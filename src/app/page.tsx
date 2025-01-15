@@ -94,11 +94,11 @@ export default function Home() {
       }
 
       // 从本地状态中移除
-      setSites(sites.filter(site => site._id !== id))
+      setSites(prevSites => prevSites.filter(site => site._id !== id))
       toast.success('删除成功')
       
-      // 删除成功后立即刷新数据
-      await loadSites()
+      // 延迟 5 秒后再刷新数据，避免与自动刷新冲突
+      setTimeout(loadSites, 5000)
     } catch (error: any) {
       console.error('删除失败:', error)
       if (error.message === '未登录') {
