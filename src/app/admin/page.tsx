@@ -18,6 +18,7 @@ export default function AdminPage() {
     setIsLoading(true)
     try {
       const urlList = urls.split('\n').filter(url => url.trim())
+      console.log('准备提交的URL列表:', urlList)
       
       const response = await fetch('/api/sites', {
         method: 'POST',
@@ -27,20 +28,22 @@ export default function AdminPage() {
         body: JSON.stringify({ urls: urlList }),
       })
 
+      const data = await response.json()
+      console.log('服务器响应:', data)
+
       if (!response.ok) {
-        throw new Error('提交失败')
+        throw new Error(data.message || '提交失败')
       }
 
-      const data = await response.json()
       if (data.success) {
-        toast.success('添加成功')
+        toast.success(`添加成功：${data.count} 个网址`)
         setUrls('')
       } else {
         toast.error(data.message || '添加失败')
       }
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('操作失败，请重试')
+    } catch (error: any) {
+      console.error('提交失败:', error)
+      toast.error(error.message || '操作失败，请重试')
     } finally {
       setIsLoading(false)
     }
