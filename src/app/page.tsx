@@ -22,6 +22,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [pauseAutoRefresh, setPauseAutoRefresh] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null)
 
   // 检查登录状态
   useEffect(() => {
@@ -52,11 +53,27 @@ export default function Home() {
           'Expires': '0'
         }
       })
+
       if (!response.ok) {
         throw new Error('加载失败')
       }
-      const data = await response.json()
+
+      const text = await response.text()
+      console.log('服务器返回的原始数据:', text)
+
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        console.error('解析返回数据失败:', e)
+        throw new Error('数据格式错误')
+      }
+
       console.log('加载到的网站列表:', data)
+      if (!Array.isArray(data)) {
+        throw new Error('返回的数据不是数组格式')
+      }
+
       setSites(data)
     } catch (error: any) {
       console.error('加载网站失败:', error)
@@ -67,19 +84,47 @@ export default function Home() {
     }
   }
 
-  // 首次加载
+  // 监听 localStorage 变化
   useEffect(() => {
-    loadSites()
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'lastUpdate') {
+        console.log('检测到数据更新:', e.newValue)
+        loadSites()
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
-  // 定期刷新数据
+  // 监听自定义事件
   useEffect(() => {
+    const handleSiteAdded = () => {
+      console.log('检测到网站添加事件')
+      loadSites()
+    }
+    window.addEventListener('site-added', handleSiteAdded)
+    return () => window.removeEventListener('site-added', handleSiteAdded)
+  }, [])
+
+  // 首次加载和定期刷新
+  useEffect(() => {
+    loadSites() // 首次加载
+
     if (pauseAutoRefresh) {
-      return;
+      console.log('自动刷新已暂停')
+      return
     }
     
-    const interval = setInterval(loadSites, 5000) // 每5秒刷新一次
-    return () => clearInterval(interval)
+    console.log('启动自动刷新')
+    const interval = setInterval(() => {
+      console.log('执行定时刷新')
+      loadSites()
+    }, 5000)
+
+    return () => {
+      console.log('清理定时器')
+      clearInterval(interval)
+    }
   }, [pauseAutoRefresh])
 
   const handleDelete = async (id: string) => {
