@@ -24,7 +24,7 @@
 - 💾 Sanity - 内容管理系统
 - 🎨 Tailwind CSS - 样式框架
 - 🤖 Google Gemini - AI分析
-- 📸 Playwright - 网站截图
+- 📸 Thum.io - 网站截图
 - 🌓 next-themes - 主题切换
 - 🔐 Basic Auth - 认证保护
 
