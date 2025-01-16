@@ -79,7 +79,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">批量添加网站</h1>
+        <h1 className="text-2xl font-bold mb-6">雷少的导航 - 网站管理</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">

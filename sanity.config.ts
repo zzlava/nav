@@ -5,7 +5,7 @@ import { schemaTypes } from './schemas'
 
 export default defineConfig({
   name: 'default',
-  title: '网站导航',
+  title: '小张的导航',
 
   projectId: '9xq6sxv8',
   dataset: 'production',
