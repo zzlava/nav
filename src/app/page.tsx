@@ -66,7 +66,8 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch('/api/sites')
+      setLoading(true)
+      const response = await fetch('/api/sites/list')
       if (!response.ok) {
         throw new Error('加载失败')
       }
@@ -77,6 +78,8 @@ export default function Home() {
     } catch (err) {
       setError('加载失败，请重试')
       console.error('加载网站列表失败:', err)
+    } finally {
+      setLoading(false)
     }
   }, [lastRefreshTime])
 
