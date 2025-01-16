@@ -55,7 +55,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            小张的导航 - 管理登录
+            雷少的导航 - 管理登录
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

@@ -210,7 +210,7 @@ export default function Home() {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-foreground">
-                小张的导航
+                雷少的导航
               </h1>
               <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
                 Beta

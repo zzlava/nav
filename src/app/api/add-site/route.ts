@@ -6,7 +6,12 @@ import { analyzeUrl } from '@/lib/gemini'
 async function captureScreenshot(url: string): Promise<Buffer | null> {
   try {
     console.log('使用 thum.io 获取截图:', url)
-    const auth = '73212-088cfe418adf4a1658b4d4aa9d0d31fb'
+    const auth = process.env.THUMBIO_AUTH_TOKEN
+    if (!auth) {
+      console.error('缺少 THUMBIO_AUTH_TOKEN 环境变量')
+      throw new Error('截图服务配置错误')
+    }
+    
     const thumbUrl = `//image.thum.io/get/auth/${auth}/width/1280/crop/800/delay/3/noanimate/png/${url}`
     
     // 添加协议前缀
