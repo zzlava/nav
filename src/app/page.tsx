@@ -209,14 +209,14 @@ export default function Home() {
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-foreground">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">
                 雷少的导航
               </h1>
               <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
                 Beta
               </span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={loadSites}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -227,7 +227,7 @@ export default function Home() {
                 href="/admin"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                管理后台
+                管理
               </a>
               <ThemeToggle />
             </div>
@@ -236,16 +236,16 @@ export default function Home() {
       </nav>
 
       {/* 主要内容区域 */}
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6">
-        <div className="flex gap-6">
-          {/* 左侧分类栏 */}
-          <div className="w-48 shrink-0">
-            <div className="sticky top-24 space-y-1">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+          {/* 左侧分类栏 - 在移动端水平滚动 */}
+          <div className="sm:w-48 sm:shrink-0 -mx-4 sm:mx-0 px-4 sm:px-0">
+            <div className="sm:sticky sm:top-24 flex sm:flex-col gap-2 overflow-x-auto sm:overflow-x-visible pb-4 sm:pb-0">
               {categories.map(category => (
                 <button
                   key={category.id}
                   onClick={() => setActiveCategory(category.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  className={`flex-shrink-0 sm:flex-shrink inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
                     activeCategory === category.id
                       ? 'bg-primary/10 text-primary'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -265,7 +265,7 @@ export default function Home() {
 
           {/* 右侧内容区域 */}
           <div className="flex-1">
-            <div className="rounded-lg border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border bg-card p-4 sm:p-6 shadow-sm">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-foreground">网站列表</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -273,7 +273,7 @@ export default function Home() {
                 </p>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {filteredSites.length > 0 ? (
                   filteredSites.map((site) => (
                     <Card
