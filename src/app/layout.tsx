@@ -1,6 +1,7 @@
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import type { Metadata } from 'next'
+import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: '雷少的导航',
@@ -13,10 +14,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh">
+    <html lang="zh" suppressHydrationWarning>
       <body>
-        {children}
-        <Toaster position="top-center" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster position="top-center" />
+        </ThemeProvider>
       </body>
     </html>
   )

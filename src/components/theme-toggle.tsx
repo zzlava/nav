@@ -18,12 +18,12 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="fixed bottom-5 right-5 p-2 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-muted hover:text-foreground h-9 w-9"
       aria-label="切换主题"
     >
       {theme === 'dark' ? (
         <svg
-          className="w-6 h-6 text-yellow-500"
+          className="h-4 w-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -37,7 +37,7 @@ export default function ThemeToggle() {
         </svg>
       ) : (
         <svg
-          className="w-6 h-6 text-gray-900"
+          className="h-4 w-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
