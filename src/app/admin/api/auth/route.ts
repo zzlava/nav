@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createToken } from '@/lib/auth'
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin'
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
@@ -19,7 +20,10 @@ export async function POST(request: Request) {
     })
 
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      console.log('验证成功，设置 cookie')
+      console.log('验证成功，生成 token')
+      
+      // 生成 JWT token
+      const token = await createToken(username)
       
       // 创建响应
       const response = NextResponse.json({ 
@@ -29,8 +33,8 @@ export async function POST(request: Request) {
 
       // 设置 cookie
       response.cookies.set({
-        name: 'isLoggedIn',
-        value: 'true',
+        name: 'token',
+        value: token,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
         maxAge: 60 * 60 * 24 // 24 hours
       })
 
-      console.log('Cookie 已设置')
+      console.log('Token 已设置到 cookie')
       return response
     }
 
