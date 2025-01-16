@@ -1,9 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Card from '@/components/Card'
 import ThemeToggle from '@/components/theme-toggle'
 import { toast } from 'react-hot-toast'
+
+interface Site {
+  _id: string
+  title: string
+  description: string
+  url: string
+  category: string
+  screenshot?: {
+    asset?: {
+      _ref: string
+    }
+  }
+}
 
 // 定义分类
 const categories = [
@@ -16,85 +29,73 @@ const categories = [
 ]
 
 export default function Home() {
-  const [sites, setSites] = useState<any[]>([])
+  const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeCategory, setActiveCategory] = useState('all')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [pauseAutoRefresh, setPauseAutoRefresh] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<string | null>(null)
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(Date.now())
+
+  const REFRESH_INTERVAL = 5 * 60 * 1000 // 5分钟的刷新间隔
 
   // 检查登录状态
-  useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const response = await fetch('/api/check-login')
-        const data = await response.json()
-        setIsLoggedIn(data.isLoggedIn)
-      } catch (error) {
-        console.error('检查登录状态失败:', error)
-        setIsLoggedIn(false)
-      }
-    }
-    checkLoginStatus()
-  }, [])
-
-  // 定义加载函数
-  const loadSites = async () => {
+  const checkLoginStatus = async () => {
     try {
-      setError(null)
-      console.log('开始加载网站列表...')
-      const timestamp = new Date().getTime() // 添加时间戳防止缓存
-      const response = await fetch(`/api/sites/list?t=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('加载失败')
-      }
-
-      const text = await response.text()
-      console.log('服务器返回的原始数据:', text)
-
-      let data
-      try {
-        data = JSON.parse(text)
-      } catch (e) {
-        console.error('解析返回数据失败:', e)
-        throw new Error('数据格式错误')
-      }
-
-      console.log('加载到的网站列表:', data)
-      if (!Array.isArray(data)) {
-        throw new Error('返回的数据不是数组格式')
-      }
-
-      setSites(data)
-    } catch (error: any) {
-      console.error('加载网站失败:', error)
-      setError(error.message || '加载失败')
-      toast.error('加载网站列表失败，请刷新页面重试')
-    } finally {
-      setLoading(false)
+      const response = await fetch('/admin/api/check-auth')
+      const data = await response.json()
+      setIsLoggedIn(data.isLoggedIn)
+    } catch (error) {
+      console.error('检查登录状态失败:', error)
+      setIsLoggedIn(false)
     }
   }
 
-  // 监听 localStorage 变化
+  // 定义加载函数
+  const loadSites = useCallback(async (force = false) => {
+    // 检查是否需要刷新
+    const now = Date.now()
+    const lastUpdate = localStorage.getItem('lastUpdate')
+    const timeSinceLastRefresh = now - lastRefreshTime
+
+    // 如果不是强制刷新，且未达到刷新间隔，且没有新的更新，则跳过
+    if (!force && 
+        timeSinceLastRefresh < REFRESH_INTERVAL && 
+        (!lastUpdate || new Date(lastUpdate).getTime() < lastRefreshTime)) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/sites')
+      if (!response.ok) {
+        throw new Error('加载失败')
+      }
+      const data = await response.json()
+      setSites(data)
+      setError(null)
+      setLastRefreshTime(now)
+    } catch (err) {
+      setError('加载失败，请重试')
+      console.error('加载网站列表失败:', err)
+    }
+  }, [lastRefreshTime])
+
+  // 监听后台更新事件
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'lastUpdate') {
-        console.log('检测到数据更新:', e.newValue)
-        loadSites()
+        loadSites(true) // 强制刷新
       }
     }
+    
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+  }, [loadSites])
+
+  useEffect(() => {
+    loadSites()
+    checkLoginStatus()
+  }, [loadSites])
 
   // 监听自定义事件
   useEffect(() => {
@@ -172,6 +173,11 @@ export default function Home() {
     activeCategory === 'all' ? true : site.category === activeCategory
   )
 
+  // 处理刷新按钮点击
+  const handleRefreshClick = () => {
+    loadSites(true)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -203,9 +209,9 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-background/50 dark:bg-background">
+    <main className="min-h-screen bg-background">
       {/* 顶部导航栏 */}
-      <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 dark:bg-background/95">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
@@ -216,10 +222,10 @@ export default function Home() {
                 Beta
               </span>
             </div>
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <button
-                onClick={loadSites}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleRefreshClick}
+                className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 刷新
               </button>
@@ -247,7 +253,7 @@ export default function Home() {
                   onClick={() => setActiveCategory(category.id)}
                   className={`flex-shrink-0 sm:flex-shrink inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
                     activeCategory === category.id
-                      ? 'bg-primary/10 text-primary'
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -265,12 +271,20 @@ export default function Home() {
 
           {/* 右侧内容区域 */}
           <div className="flex-1">
-            <div className="rounded-lg border bg-card p-4 sm:p-6 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-foreground">网站列表</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  点击卡片访问对应网站
-                </p>
+            <div className="rounded-lg border bg-card text-card-foreground dark:border-neutral-800 p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">网站列表</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    点击卡片访问对应网站
+                  </p>
+                </div>
+                <button
+                  onClick={handleRefreshClick}
+                  className="sm:hidden inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-9 px-4 py-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+                >
+                  刷新
+                </button>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -294,12 +308,8 @@ export default function Home() {
       </div>
 
       {/* 页脚 */}
-      <footer className="mt-8 border-t py-6">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <div className="text-center text-sm text-muted-foreground">
-            使用 Next.js + Sanity + Tailwind CSS 构建
-          </div>
-        </div>
+      <footer className="mt-8 border-t border-border py-6 text-center text-sm text-muted-foreground">
+        <p>© 2024 雷少的导航. All rights reserved.</p>
       </footer>
     </main>
   )
