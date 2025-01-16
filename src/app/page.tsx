@@ -67,17 +67,40 @@ export default function Home() {
 
     try {
       setLoading(true)
-      const response = await fetch('/api/sites/list')
+      const response = await fetch('/api/sites/list', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+      
       if (!response.ok) {
         throw new Error('加载失败')
       }
-      const data = await response.json()
+
+      const text = await response.text()
+      console.log('服务器返回的原始数据:', text)
+
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        console.error('解析返回数据失败:', e)
+        throw new Error('数据格式错误')
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error('返回的数据不是数组格式')
+      }
+
       setSites(data)
       setError(null)
       setLastRefreshTime(now)
     } catch (err) {
-      setError('加载失败，请重试')
       console.error('加载网站列表失败:', err)
+      setError('加载失败，请重试')
     } finally {
       setLoading(false)
     }
@@ -104,11 +127,11 @@ export default function Home() {
   useEffect(() => {
     const handleSiteAdded = () => {
       console.log('检测到网站添加事件')
-      loadSites()
+      loadSites(true)
     }
     window.addEventListener('site-added', handleSiteAdded)
     return () => window.removeEventListener('site-added', handleSiteAdded)
-  }, [])
+  }, [loadSites])
 
   // 首次加载和定期刷新
   useEffect(() => {
@@ -123,13 +146,13 @@ export default function Home() {
     const interval = setInterval(() => {
       console.log('执行定时刷新')
       loadSites()
-    }, 5000)
+    }, REFRESH_INTERVAL) // 使用 REFRESH_INTERVAL 而不是固定的 5000
 
     return () => {
       console.log('清理定时器')
       clearInterval(interval)
     }
-  }, [pauseAutoRefresh])
+  }, [pauseAutoRefresh, loadSites])
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这个网站吗？')) return
