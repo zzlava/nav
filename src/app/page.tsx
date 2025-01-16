@@ -197,7 +197,7 @@ export default function Home() {
           <div className="text-center text-red-500">
             {error}
             <button
-              onClick={loadSites}
+              onClick={() => loadSites(true)}
               className="ml-4 text-blue-500 hover:underline"
             >
               重试
