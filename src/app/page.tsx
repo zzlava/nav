@@ -119,7 +119,7 @@ export default function Home() {
     const interval = setInterval(() => {
       console.log('执行定时刷新')
       loadSites()
-    }, 5000)
+    }, 5 * 60 * 1000) // 5分钟刷新一次
 
     return () => {
       console.log('清理定时器')
